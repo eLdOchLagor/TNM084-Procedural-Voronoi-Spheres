@@ -123,8 +123,8 @@ int main()
         -1.f,  1.f, 0.0f,     0.0f, 1.0f  // Top-left
     };
 
-    int numberOfPoints = 200;
-    float radius = 0.5;
+    int numberOfPoints = 20000;
+    float radius = 1;
     std::vector<float> points = generateRandomPointsOnSphere(numberOfPoints, radius);
     
     unsigned int VAO;
@@ -169,7 +169,7 @@ int main()
         // Use the shader program
         glUseProgram(shaderProgram);
 
-        glPointSize(10.0f);
+        glPointSize(5.0f);
 
         // Bind the VAO and draw the triangle
         glBindVertexArray(VAO);
@@ -259,7 +259,7 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
         float randomNumberAz = generateRandomValue();
         float randomNumberInc = generateRandomValue();
 
-        float inclinationAngle = M_PI * randomNumberInc;
+        float inclinationAngle = acos(2 * randomNumberInc - 1);
         float azimuthAngle = 2 * M_PI * randomNumberAz;
 
         float x = r * sin(inclinationAngle) * cos(azimuthAngle);
@@ -269,7 +269,6 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
         randomPoints.push_back(x);
         randomPoints.push_back(y);
         randomPoints.push_back(z);
-        //std::cout << x << ", " << y << ", " << z << "\n";
     }
 
     return randomPoints;
