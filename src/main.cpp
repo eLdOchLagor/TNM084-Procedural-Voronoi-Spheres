@@ -123,8 +123,8 @@ int main()
         -1.f,  1.f, 0.0f,     0.0f, 1.0f  // Top-left
     };
 
-    int numberOfPoints = 20;
-    float radius = 1;
+    int numberOfPoints = 200;
+    float radius = 0.5;
     std::vector<float> points = generateRandomPointsOnSphere(numberOfPoints, radius);
     
     unsigned int VAO;
@@ -144,10 +144,10 @@ int main()
     glEnableVertexAttribArray(0);
 
     // Texture coordinate attribute (location = 1)
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    //glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
-    glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
+    //glEnableVertexAttribArray(0);
+    //glEnableVertexAttribArray(1);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -169,9 +169,11 @@ int main()
         // Use the shader program
         glUseProgram(shaderProgram);
 
+        glPointSize(10.0f);
+
         // Bind the VAO and draw the triangle
         glBindVertexArray(VAO);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+        glDrawArrays(GL_POINTS, 0, numberOfPoints);
 
         // Swap the buffers
         glfwSwapBuffers(window);
@@ -254,10 +256,11 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
 
     for (size_t i = 0; i < n; i++)
     {
-        float randomNumber = generateRandomValue();
+        float randomNumberAz = generateRandomValue();
+        float randomNumberInc = generateRandomValue();
 
-        float inclinationAngle = M_PI * randomNumber;
-        float azimuthAngle = 2 * M_PI * randomNumber;
+        float inclinationAngle = M_PI * randomNumberInc;
+        float azimuthAngle = 2 * M_PI * randomNumberAz;
 
         float x = r * sin(inclinationAngle) * cos(azimuthAngle);
         float y = r * sin(inclinationAngle) * sin(azimuthAngle);
