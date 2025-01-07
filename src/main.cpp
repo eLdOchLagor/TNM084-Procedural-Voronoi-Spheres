@@ -24,6 +24,8 @@ std::string readShaderFile(const char* filePath);
 unsigned int compileShader(const char* shaderSource, GLenum shaderType);
 double generateRandomValue(double min = 0, double max = 1);
 std::vector<float> generateRandomPointsOnSphere(int n, float r);
+std::vector<float> generateGridPointsOnSphere(int n, float r);
+
 
 int main()
 {
@@ -123,9 +125,9 @@ int main()
         -1.f,  1.f, 0.0f,     0.0f, 1.0f  // Top-left
     };
 
-    int numberOfPoints = 20000;
+    int numberOfPoints = 2000;
     float radius = 1;
-    std::vector<float> points = generateRandomPointsOnSphere(numberOfPoints, radius);
+    std::vector<float> points = generateGridPointsOnSphere(numberOfPoints, radius);
     
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
@@ -250,6 +252,7 @@ double generateRandomValue(double min, double max) {
     return dis(rd);
 }
 
+// Genererar random seed points på sfär, kan användas om voronoi beräknas på cpu
 std::vector<float> generateRandomPointsOnSphere(int n, float r) {
     std::vector<float> randomPoints;
     randomPoints.reserve(3*n);
@@ -269,6 +272,37 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
         randomPoints.push_back(x);
         randomPoints.push_back(y);
         randomPoints.push_back(z);
+    }
+
+    return randomPoints;
+}
+
+// Genererar random seed points på sfär, kan användas om voronoi beräknas på cpu
+std::vector<float> generateGridPointsOnSphere(int n, float r) {
+    std::vector<float> randomPoints;
+    randomPoints.reserve(3 * n);
+
+    int pointsPerAxis = sqrt(n); // This will cause the nested loop to generate n points since sqrt(n)*sqrt(n)=n
+
+    for (size_t i = 0; i < pointsPerAxis; i++) // Iterates around sphere
+    {
+        float stepAz = (float)(i + 1) / (float)(pointsPerAxis + 1);
+        float azimuthAngle = 2 * M_PI * stepAz;
+
+        for (size_t j = 0; j < pointsPerAxis; j++) // Iterates up along sphere
+        {
+            float stepInc = (float)(j + 1) / (float)(pointsPerAxis + 1);
+
+            float inclinationAngle = M_PI * stepInc;
+            
+            float x = r * sin(inclinationAngle) * cos(azimuthAngle);
+            float y = r * sin(inclinationAngle) * sin(azimuthAngle);
+            float z = r * cos(inclinationAngle);
+
+            randomPoints.push_back(x);
+            randomPoints.push_back(y);
+            randomPoints.push_back(z);
+        }
     }
 
     return randomPoints;
