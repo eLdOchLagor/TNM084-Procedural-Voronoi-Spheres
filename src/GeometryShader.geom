@@ -5,6 +5,8 @@ layout(points, max_vertices = 1) out; // Output: single point
 
 in ivec2 gridIndex[];
 
+flat out ivec2 outGridIndex;
+
 // Random3 function taken from Lab4 geometry shader
 vec3 random3(vec3 st)
 {
@@ -16,6 +18,7 @@ vec3 random3(vec3 st)
 
 void main()
 {
+    outGridIndex = gridIndex[0];
     gl_Position = gl_in[0].gl_Position; // Pass-through position
     EmitVertex();                       // Emit the single vertex
     EndPrimitive();                     // End the primitive
