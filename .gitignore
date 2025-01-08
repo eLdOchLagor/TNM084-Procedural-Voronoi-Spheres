@@ -33,6 +33,7 @@
 *.app
 
 # Folders
+VoronoiSphere/
 VoronoiSpheres/
 x64/
 .vs/
