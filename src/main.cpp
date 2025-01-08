@@ -125,7 +125,7 @@ int main()
         -1.f,  1.f, 0.0f,     0.0f, 1.0f  // Top-left
     };
 
-    int numberOfPoints = 2000;
+    int numberOfPoints = 200;
     float radius = 1;
     std::vector<float> points = generateGridPointsOnSphere(numberOfPoints, radius);
     
@@ -145,11 +145,11 @@ int main()
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
-    // Texture coordinate attribute (location = 1)
-    //glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+    // Vertex index attribute (location = 1)
+    glVertexAttribIPointer(1, 2, GL_INT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
 
-    //glEnableVertexAttribArray(0);
-    //glEnableVertexAttribArray(1);
+    glEnableVertexAttribArray(0);
+    glEnableVertexAttribArray(1);
 
     glEnable(GL_DEPTH_TEST);
 
@@ -280,18 +280,18 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
 // Genererar random seed points på sfär, kan användas om voronoi beräknas på cpu
 std::vector<float> generateGridPointsOnSphere(int n, float r) {
     std::vector<float> randomPoints;
-    randomPoints.reserve(3 * n);
+    randomPoints.reserve(5 * n);
 
     int pointsPerAxis = sqrt(n); // This will cause the nested loop to generate n points since sqrt(n)*sqrt(n)=n
 
     for (size_t i = 0; i < pointsPerAxis; i++) // Iterates around sphere
     {
-        float stepAz = (float)(i + 1) / (float)(pointsPerAxis + 1);
+        float stepAz = (float)(i) / (float)(pointsPerAxis);
         float azimuthAngle = 2 * M_PI * stepAz;
 
         for (size_t j = 0; j < pointsPerAxis; j++) // Iterates up along sphere
         {
-            float stepInc = (float)(j + 1) / (float)(pointsPerAxis + 1);
+            float stepInc = (float)(j) / (float)(pointsPerAxis);
 
             float inclinationAngle = M_PI * stepInc;
             
@@ -302,6 +302,8 @@ std::vector<float> generateGridPointsOnSphere(int n, float r) {
             randomPoints.push_back(x);
             randomPoints.push_back(y);
             randomPoints.push_back(z);
+            randomPoints.push_back(i);
+            randomPoints.push_back(j);
         }
     }
 

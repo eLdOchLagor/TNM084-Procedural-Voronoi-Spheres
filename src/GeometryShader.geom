@@ -3,6 +3,8 @@
 layout(points) in;                 // Input: single point
 layout(points, max_vertices = 1) out; // Output: single point
 
+in ivec2 gridIndex[];
+
 // Random3 function taken from Lab4 geometry shader
 vec3 random3(vec3 st)
 {
