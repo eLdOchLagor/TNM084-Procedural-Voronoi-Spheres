@@ -35,7 +35,7 @@ float deltaTime = 0.0f;	// Time between current frame and last frame
 float lastFrame = 0.0f; // Time of last frame
 
 bool firstMouse = true;
-float lastX = 400, lastY = 300, yaw = 0, pitch = 0;
+float lastX = 400.f, lastY = 300.f, yaw = -90.f, pitch = 0.f;
 
 int main()
 {
@@ -128,7 +128,7 @@ int main()
     // Updates glViewport when window is resized
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
-    //glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetCursorPosCallback(window, mouse_callback);
 
     float vertices[] = {
         // Positions          // Texture Coords
@@ -227,7 +227,7 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
     lastX = xpos;
     lastY = ypos;
 
-    float sensitivity = 0.01f;
+    float sensitivity = 0.05f;
     xoffset *= sensitivity;
     yoffset *= sensitivity;
 
