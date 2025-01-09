@@ -63,24 +63,24 @@ int main()
     }
 
     // Read the vertex shader source from the file
-    std::string vertexShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\VertexShader.vert");
-    //std::string vertexShaderSource = readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\VertexShader.vert");
+    //std::string vertexShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\VertexShader.vert");
+    std::string vertexShaderSource = readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\VertexShader.vert");
     if (vertexShaderSource.empty())
     {
         return -1; // Exit if the file couldn't be read
     }
 
     // Read the fragment shader source from the file
-    std::string fragmentShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\FragmentShader.frag");
-    //std::string fragmentShaderSource = readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\FragmentShader.frag");
+    //std::string fragmentShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\FragmentShader.frag");
+    std::string fragmentShaderSource = readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\FragmentShader.frag");
     if (fragmentShaderSource.empty())
     {
         return -1; // Exit if the file couldn't be read
     }
 
     // Read the geometry shader source from the file
-    std::string geometryShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\GeometryShader.geom");
-    //std::string geometryShaderSource = readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\GeometryShader.geom");
+    //std::string geometryShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\GeometryShader.geom");
+    std::string geometryShaderSource = readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\GeometryShader.geom");
     if (geometryShaderSource.empty())
     {
         return -1; // Exit if the file couldn't be read
@@ -122,6 +122,7 @@ int main()
     unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
     unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
     unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+    unsigned int numberOfPointsLoc = glGetUniformLocation(shaderProgram, "numberOfPoints");
 
     glViewport(0, 0, 800, 600);
 
@@ -130,17 +131,7 @@ int main()
 
     glfwSetCursorPosCallback(window, mouse_callback);
 
-    float vertices[] = {
-        // Positions          // Texture Coords
-        -1.f, -1.f, 0.0f,     0.0f, 0.0f, // Bottom-left
-         1.f, -1.f, 0.0f,     1.0f, 0.0f, // Bottom-right
-        -1.f,  1.f, 0.0f,     0.0f, 1.0f, // Top-left
-         1.f, -1.f, 0.0f,     1.0f, 0.0f, // Bottom-right
-         1.f,  1.f, 0.0f,     1.0f, 1.0f, // Top-right
-        -1.f,  1.f, 0.0f,     0.0f, 1.0f  // Top-left
-    };
-
-    int numberOfPoints = 200;
+    int numberOfPoints = 1000;
     float radius = 1;
     std::vector<float> points = generateGridPointsOnSphere(numberOfPoints, radius);
     
@@ -157,13 +148,11 @@ int main()
     glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(float), points.data(), GL_STATIC_DRAW);
 
     // Position attribute (location = 0)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     // Vertex index attribute (location = 1)
-    glVertexAttribIPointer(1, 2, GL_INT, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-
-    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     glEnable(GL_DEPTH_TEST);
@@ -187,6 +176,7 @@ int main()
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform1i(numberOfPointsLoc, numberOfPoints);
 
         // Use the shader program
         glUseProgram(shaderProgram);
@@ -340,37 +330,30 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
     return randomPoints;
 }
 
-// Genererar random seed points på sfär, kan användas om voronoi beräknas på cpu
+
 std::vector<float> generateGridPointsOnSphere(int n, float r) {
-    std::vector<float> randomPoints;
-    randomPoints.reserve(5 * n);
+    std::vector<float> points;
 
-    int pointsPerAxis = sqrt(n); // This will cause the nested loop to generate n points since sqrt(n)*sqrt(n)=n
+    int numPoints = 1000;
 
-    for (size_t i = 0; i < pointsPerAxis; i++) // Iterates around sphere
-    {
-        float stepAz = (float)(i) / (float)(pointsPerAxis);
-        float azimuthAngle = 2 * M_PI * stepAz;
+    float goldenRatio = (1.0f + sqrt(5.0f)) / 2.0f; // Golden ratio
 
-        for (size_t j = 0; j < pointsPerAxis; j++) // Iterates up along sphere
-        {
-            float stepInc = (float)(j) / (float)(pointsPerAxis);
+    for (int i = 0; i < n; i++) {
+        float z = 1.0f - (2.0f * i) / (n - 1); // z goes from 1 to -1
+        float radiusAtZ = sqrt(1.0f - z * z); // Radius at this z
 
-            float inclinationAngle = M_PI * stepInc;
-            
-            float x = r * sin(inclinationAngle) * cos(azimuthAngle);
-            float y = r * sin(inclinationAngle) * sin(azimuthAngle);
-            float z = r * cos(inclinationAngle);
+        float theta = 2.0f * M_PI * i / goldenRatio; // Golden angle increment
 
-            randomPoints.push_back(x);
-            randomPoints.push_back(y);
-            randomPoints.push_back(z);
-            randomPoints.push_back(i);
-            randomPoints.push_back(j);
-        }
+        float x = r * radiusAtZ * cos(theta);
+        float y = r * radiusAtZ * sin(theta);
+
+        points.push_back(x);
+        points.push_back(y);
+        points.push_back(z);
+        points.push_back(float(i));
     }
 
-    return randomPoints;
+    return points;
 }
 
 
