@@ -334,7 +334,7 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
 
 std::vector<float> generateGridPointsOnSphere(int n, float r) {
     std::vector<float> points;
-    points.reserve(4 * n); // Reserve space for x, y, z coordinates of n points
+    points.reserve(5 * n); // Reserve space for x, y, z coordinates of n points
 
     int numInc = std::sqrt(n); // Number of divisions for azimuthal angle
     int numAz = std::sqrt(n);   // Number of divisions for polar angle

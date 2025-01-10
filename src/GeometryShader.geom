@@ -11,7 +11,6 @@ uniform mat4 view;
 uniform mat4 projection;
 
 flat in vec2 index[];
-
 flat out vec2 outIndex;
 
 // Random3 function taken from Lab4 geometry shader
@@ -25,7 +24,6 @@ vec3 random3(vec3 st)
 
 void main()
 {
-    
     /*
     for( int i=-1; i<=1; i++ ) {
 
@@ -43,12 +41,12 @@ void main()
 
     vec4 spherePoint = gl_in[0].gl_Position;
 
-    gl_Position = spherePoint;
+    gl_Position = projection * view * model * spherePoint;
     EmitVertex();
 
-    gl_Position = spherePoint * 1.1;
+    vec4 endPoint = spherePoint * vec4(1.1, 1.1, 1.1, 1.0);
+    gl_Position = projection * view * model * endPoint;
     EmitVertex();
 
-    // Finalize the primitive (line strip)
     EndPrimitive();
 }
