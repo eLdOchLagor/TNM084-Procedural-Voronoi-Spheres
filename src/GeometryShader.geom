@@ -1,11 +1,18 @@
 #version 330 core
 
-layout(points) in;                 // Input: single point
-layout(points, max_vertices = 1) out; // Output: single point
+#define M_PI 3.1415926535897932384626433832795
 
-flat in float index[];
+layout(points) in;
+layout(line_strip, max_vertices = 2) out;
 
-flat out float outIndex;
+uniform int numberOfPoints;
+uniform mat4 model;
+uniform mat4 view;
+uniform mat4 projection;
+
+flat in vec2 index[];
+
+flat out vec2 outIndex;
 
 // Random3 function taken from Lab4 geometry shader
 vec3 random3(vec3 st)
@@ -18,8 +25,30 @@ vec3 random3(vec3 st)
 
 void main()
 {
+    
+    /*
+    for( int i=-1; i<=1; i++ ) {
+
+        float inc = 2.0f * M_PI * (index[0].x + i) / sqrt(numberOfPoints);
+
+        for( int j=-1; j<=1; j++ ) {
+            float az = M_PI * (index[0].y + j) / sqrt(numberOfPoints);
+
+            vec3 neighborPoint = vec3(1.0 * sin(az) * cos(inc), 1.0 * sin(az) * sin(inc), 1.0 * cos(az));
+        }
+    }
+    */
+
     outIndex = index[0];
-    gl_Position = gl_in[0].gl_Position; // Pass-through position
-    EmitVertex();                       // Emit the single vertex
-    EndPrimitive();                     // End the primitive
+
+    vec4 spherePoint = gl_in[0].gl_Position;
+
+    gl_Position = spherePoint;
+    EmitVertex();
+
+    gl_Position = spherePoint * 1.1;
+    EmitVertex();
+
+    // Finalize the primitive (line strip)
+    EndPrimitive();
 }

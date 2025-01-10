@@ -1,4 +1,4 @@
-#pragma once
+Ôªø#pragma once
 
 #define _USE_MATH_DEFINES
 
@@ -148,11 +148,11 @@ int main()
     glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(float), points.data(), GL_STATIC_DRAW);
 
     // Position attribute (location = 0)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     // Vertex index attribute (location = 1)
-    glVertexAttribPointer(1, 1, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     glEnable(GL_DEPTH_TEST);
@@ -180,10 +180,11 @@ int main()
 
         // Use the shader program
         glUseProgram(shaderProgram);
-
+        
+        glLineWidth(2.0f);
         glPointSize(5.0f);
 
-        // Bind the VAO and draw the triangle
+        // Bind the VAO and draw
         glBindVertexArray(VAO);
         glDrawArrays(GL_POINTS, 0, numberOfPoints);
 
@@ -305,7 +306,7 @@ double generateRandomValue(double min, double max) {
     return dis(rd);
 }
 
-// Genererar random seed points pÂ sf‰r, kan anv‰ndas om voronoi ber‰knas pÂ cpu
+// Genererar random seed points p√• sf√§r, kan anv√§ndas om voronoi ber√§knas p√• cpu
 std::vector<float> generateRandomPointsOnSphere(int n, float r) {
     std::vector<float> randomPoints;
     randomPoints.reserve(3*n);
@@ -333,24 +334,28 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
 
 std::vector<float> generateGridPointsOnSphere(int n, float r) {
     std::vector<float> points;
+    points.reserve(4 * n); // Reserve space for x, y, z coordinates of n points
 
-    int numPoints = 1000;
+    int numInc = std::sqrt(n); // Number of divisions for azimuthal angle
+    int numAz = std::sqrt(n);   // Number of divisions for polar angle
 
-    float goldenRatio = (1.0f + sqrt(5.0f)) / 2.0f; // Golden ratio
+    for (int i = 0; i < numInc; ++i) {
+        float inc = 2.0f * M_PI * i / numInc; // Azimuthal angle (0 to 2œÄ)
 
-    for (int i = 0; i < n; i++) {
-        float z = 1.0f - (2.0f * i) / (n - 1); // z goes from 1 to -1
-        float radiusAtZ = sqrt(1.0f - z * z); // Radius at this z
+        for (int j = 0; j < numAz; ++j) {
+            float az = M_PI * j / numAz; // Polar angle (0 to œÄ)
 
-        float theta = 2.0f * M_PI * i / goldenRatio; // Golden angle increment
+            // Convert spherical coordinates to Cartesian coordinates
+            float x = r * std::sin(az) * std::cos(inc);
+            float y = r * std::sin(az) * std::sin(inc);
+            float z = r * std::cos(az);
 
-        float x = r * radiusAtZ * cos(theta);
-        float y = r * radiusAtZ * sin(theta);
-
-        points.push_back(x);
-        points.push_back(y);
-        points.push_back(z);
-        points.push_back(float(i));
+            points.push_back(x);
+            points.push_back(y);
+            points.push_back(z);
+            points.push_back(i);
+            points.push_back(j);
+        }
     }
 
     return points;
