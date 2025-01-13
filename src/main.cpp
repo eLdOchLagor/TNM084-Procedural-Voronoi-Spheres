@@ -153,6 +153,8 @@ int main()
         flattenedVertexBuffer.push_back(vertex.z);
     }
 
+    std::vector<unsigned int> castedIndexBuffer(indexBuffer.begin(), indexBuffer.end());
+
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
     glBindVertexArray(VAO);
@@ -161,16 +163,16 @@ int main()
     glGenBuffers(1, &VBO);
     // Copy vertices into VBO
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, vertexBuffer.size() * sizeof(quickhull::Vector3<float>), flattenedVertexBuffer.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, flattenedVertexBuffer.size() * sizeof(float), flattenedVertexBuffer.data(), GL_STATIC_DRAW);
 
     // Generate and bind the EBO
     unsigned int EBO;
     glGenBuffers(1, &EBO);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBuffer.size() * sizeof(unsigned int), indexBuffer.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, castedIndexBuffer.size() * sizeof(unsigned int), castedIndexBuffer.data(), GL_STATIC_DRAW);
 
     // Position attribute (location = 0)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(quickhull::Vector3<float>), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
 
     /*
@@ -217,7 +219,7 @@ int main()
 
         // Bind the VAO and draw
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, indexBuffer.size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_TRIANGLES, castedIndexBuffer.size(), GL_UNSIGNED_INT, 0);
 
         // Unbind VAO
         glBindVertexArray(0);
