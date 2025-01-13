@@ -4,7 +4,7 @@ uniform int numberOfPoints;
 
 out vec4 FragColor;   // Output fragment color
 
-flat in vec2 outIndex;
+//flat in vec2 outIndex;
 
 void main()
 {

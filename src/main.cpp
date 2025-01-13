@@ -8,6 +8,9 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include <quickhull/QuickHull.hpp>
+#include <quickhull/Structs/Vector3.hpp>
+
 #include <iostream>
 #include <string>
 #include <fstream>
@@ -24,7 +27,7 @@ std::string readShaderFile(const char* filePath);
 unsigned int compileShader(const char* shaderSource, GLenum shaderType);
 double generateRandomValue(double min = 0, double max = 1);
 std::vector<float> generateRandomPointsOnSphere(int n, float r);
-std::vector<float> generateGridPointsOnSphere(int n, float r);
+std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -93,7 +96,7 @@ int main()
     unsigned int shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
-    glAttachShader(shaderProgram, geometryShader);
+    //glAttachShader(shaderProgram, geometryShader);
     glLinkProgram(shaderProgram);
 
     // Check for linking errors
@@ -131,31 +134,59 @@ int main()
 
     glfwSetCursorPosCallback(window, mouse_callback);
 
-    int numberOfPoints = 1000;
+    int numberOfPoints = 100;
     float radius = 1;
-    std::vector<float> points = generateGridPointsOnSphere(numberOfPoints, radius);
-    
+    std::vector<quickhull::Vector3<float>> points = generateGridPointsOnSphere(numberOfPoints, radius);
+
+    quickhull::QuickHull<float> qh;
+    auto hull = qh.getConvexHull(points, true, false);
+    const auto& indexBuffer = hull.getIndexBuffer();
+    const auto& vertexBuffer = hull.getVertexBuffer();
+
+    // Create a flattened vector of floats
+    std::vector<float> flattenedVertexBuffer;
+    flattenedVertexBuffer.reserve(vertexBuffer.size() * 3); // Reserve space for x, y, z
+
+    for (const auto& vertex : vertexBuffer) {
+        flattenedVertexBuffer.push_back(vertex.x);
+        flattenedVertexBuffer.push_back(vertex.y);
+        flattenedVertexBuffer.push_back(vertex.z);
+    }
+
     unsigned int VAO;
     glGenVertexArrays(1, &VAO);
+    glBindVertexArray(VAO);
 
     unsigned int VBO;
     glGenBuffers(1, &VBO);
-
-    glBindVertexArray(VAO);
-
     // Copy vertices into VBO
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(float), points.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, vertexBuffer.size() * sizeof(quickhull::Vector3<float>), flattenedVertexBuffer.data(), GL_STATIC_DRAW);
+
+    // Generate and bind the EBO
+    unsigned int EBO;
+    glGenBuffers(1, &EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBuffer.size() * sizeof(unsigned int), indexBuffer.data(), GL_STATIC_DRAW);
 
     // Position attribute (location = 0)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(quickhull::Vector3<float>), (void*)0);
     glEnableVertexAttribArray(0);
 
+    /*
+    
     // Vertex index attribute (location = 1)
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
+    */
+
+    glBindVertexArray(0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
     glEnable(GL_DEPTH_TEST);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
     // Rendering loop
     while (!glfwWindowShouldClose(window))
@@ -186,7 +217,10 @@ int main()
 
         // Bind the VAO and draw
         glBindVertexArray(VAO);
-        glDrawArrays(GL_POINTS, 0, numberOfPoints);
+        glDrawElements(GL_TRIANGLES, indexBuffer.size(), GL_UNSIGNED_INT, 0);
+
+        // Unbind VAO
+        glBindVertexArray(0);
 
         // Swap the buffers
         glfwSwapBuffers(window);
@@ -332,9 +366,9 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
 }
 
 
-std::vector<float> generateGridPointsOnSphere(int n, float r) {
-    std::vector<float> points;
-    points.reserve(5 * n); // Reserve space for x, y, z coordinates of n points
+std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r) {
+    std::vector<quickhull::Vector3<float>> points;
+    points.reserve(3 * n); // Reserve space for x, y, z coordinates of n points
 
     int numInc = std::sqrt(n); // Number of divisions for azimuthal angle
     int numAz = std::sqrt(n);   // Number of divisions for polar angle
@@ -350,11 +384,9 @@ std::vector<float> generateGridPointsOnSphere(int n, float r) {
             float y = r * std::sin(az) * std::sin(inc);
             float z = r * std::cos(az);
 
-            points.push_back(x);
-            points.push_back(y);
-            points.push_back(z);
-            points.push_back(i);
-            points.push_back(j);
+            points.push_back(quickhull::Vector3<float>{ x, y, z });
+            //points.push_back(i);
+            //points.push_back(j);
         }
     }
 
