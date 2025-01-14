@@ -19,6 +19,7 @@
 #include <math.h>
 #include <vector>
 #include <chrono>
+#include <functional>
 
 
 
@@ -31,6 +32,8 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r);
 std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
+std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
+std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
 
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -45,6 +48,18 @@ float lastX = 400.f, lastY = 300.f, yaw = -90.f, pitch = 0.f;
 int numberOfPoints = 100;
 int previousNumberOfPoints = numberOfPoints;
 float radius = 1;
+
+std::vector<float> voronoiEdgeVertices;
+
+struct hash_pair {
+    template <class T1, class T2>
+    std::size_t operator()(const std::pair<T1, T2>& pair) const {
+        auto hash1 = std::hash<T1>()(pair.first);  // Hash the first element
+        auto hash2 = std::hash<T2>()(pair.second); // Hash the second element
+        // Combine the two hashes using bitwise XOR and a shift
+        return hash1 ^ (hash2 << 1);
+    }
+};
 
 int main()
 {
@@ -194,6 +209,7 @@ int main()
         // Bind the VAO and draw
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, castedIndexBuffer.size(), GL_UNSIGNED_INT, 0);
+       
 
         // Unbind VAO
         glBindVertexArray(0);
@@ -249,6 +265,9 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos)
 
 void processInput(GLFWwindow* window)
 {
+    static float lastTime = 0.0f; // Last time the E key was processed
+    float currentTime = glfwGetTime();
+
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
 
@@ -261,6 +280,13 @@ void processInput(GLFWwindow* window)
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
+
+    const float keyDelay = 0.2f; // Delay in seconds
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && (currentTime - lastTime > keyDelay))
+    {
+        numberOfPoints += 2;
+        lastTime = currentTime; // Update the last processed time
+    }
 }
 
 std::string readShaderFile(const char* filePath)
@@ -365,7 +391,7 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
         };
         randomOffset = glm::normalize(randomOffset);
 
-        double offsetMagnitude = generateRandomValue(0.0, 0.1); // Adjust the range as needed
+        double offsetMagnitude = generateRandomValue(0.0, 0.2); // Adjust the range as needed
         randomOffset *= offsetMagnitude;
 
         pos += randomOffset;
@@ -399,6 +425,22 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
 
     std::vector<unsigned int> castedIndexBuffer(indexBuffer.begin(), indexBuffer.end());
 
+    // Compute voronoi edges
+    std::vector<glm::vec3> circumcenters = computeCircumcenters(flattenedVertexBuffer, castedIndexBuffer);
+    std::vector<std::pair<glm::vec3, glm::vec3>> voronoiEdges = computeVoronoiEdges(circumcenters, castedIndexBuffer);
+
+    // Flatten Voronoi edges for OpenGL
+    
+    for (const auto& edge : voronoiEdges) {
+        voronoiEdgeVertices.push_back(edge.first.x);
+        voronoiEdgeVertices.push_back(edge.first.y);
+        voronoiEdgeVertices.push_back(edge.first.z);
+
+        voronoiEdgeVertices.push_back(edge.second.x);
+        voronoiEdgeVertices.push_back(edge.second.y);
+        voronoiEdgeVertices.push_back(edge.second.z);
+    }
+
     auto end = std::chrono::high_resolution_clock::now(); // TIMER STOP
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "The generation took " << duration << " milliseconds.\n";
@@ -418,7 +460,64 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
 
     glBindVertexArray(0);
 
+
     return castedIndexBuffer;
 }
 
+std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices,
+    const std::vector<unsigned int>& indices) {
+    std::vector<glm::vec3> circumcenters;
+
+    for (size_t i = 0; i < indices.size(); i += 3) {
+        glm::vec3 A{ vertices[indices[i] * 3], vertices[indices[i] * 3 + 1], vertices[indices[i] * 3 + 2] };
+        glm::vec3 B{ vertices[indices[i + 1] * 3], vertices[indices[i + 1] * 3 + 1], vertices[indices[i + 1] * 3 + 2] };
+        glm::vec3 C{ vertices[indices[i + 2] * 3], vertices[indices[i + 2] * 3 + 1], vertices[indices[i + 2] * 3 + 2] };
+
+        // Compute circumcenter
+        glm::vec3 AB = B - A;
+        glm::vec3 AC = C - A;
+        glm::vec3 normal = glm::cross(AB, AC);
+        glm::vec3 circumcenter = glm::normalize(glm::cross(glm::dot(AC, AC) * AB - glm::dot(AB, AB) * AC, normal));
+
+        // Normalize to lie on sphere
+        circumcenters.push_back(glm::normalize(circumcenter));
+    }
+
+    return circumcenters;
+}
+
+std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(
+    const std::vector<glm::vec3>& circumcenters,
+    const std::vector<unsigned int>& indices) {
+
+    std::unordered_map<std::pair<int, int>, glm::vec3, hash_pair> edgeToCircumcenter;
+    std::vector<std::pair<glm::vec3, glm::vec3>> voronoiEdges;
+
+    for (size_t i = 0; i < indices.size(); i += 3) {
+        int a = indices[i];
+        int b = indices[i + 1];
+        int c = indices[i + 2];
+
+        glm::vec3 circumcenter = circumcenters[i / 3];
+
+        auto insertEdge = [&](int u, int v) {
+            if (u > v) std::swap(u, v);
+            auto edge = std::make_pair(u, v);
+
+            if (edgeToCircumcenter.find(edge) != edgeToCircumcenter.end()) {
+                voronoiEdges.emplace_back(edgeToCircumcenter[edge], circumcenter);
+                edgeToCircumcenter.erase(edge);
+            }
+            else {
+                edgeToCircumcenter[edge] = circumcenter;
+            }
+            };
+
+        insertEdge(a, b);
+        insertEdge(b, c);
+        insertEdge(c, a);
+    }
+
+    return voronoiEdges;
+}
 
