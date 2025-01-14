@@ -49,8 +49,6 @@ int numberOfPoints = 100;
 int previousNumberOfPoints = numberOfPoints;
 float radius = 1;
 
-std::vector<float> voronoiEdgeVertices;
-
 struct hash_pair {
     template <class T1, class T2>
     std::size_t operator()(const std::pair<T1, T2>& pair) const {
@@ -430,7 +428,8 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
     std::vector<std::pair<glm::vec3, glm::vec3>> voronoiEdges = computeVoronoiEdges(circumcenters, castedIndexBuffer);
 
     // Flatten Voronoi edges for OpenGL
-    
+    std::vector<float> voronoiEdgeVertices;
+
     for (const auto& edge : voronoiEdges) {
         voronoiEdgeVertices.push_back(edge.first.x);
         voronoiEdgeVertices.push_back(edge.first.y);
@@ -493,7 +492,7 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(
     std::unordered_map<std::pair<int, int>, glm::vec3, hash_pair> edgeToCircumcenter;
     std::vector<std::pair<glm::vec3, glm::vec3>> voronoiEdges;
 
-    for (size_t i = 0; i < indices.size(); i += 3) {
+    for (size_t i = 0; i < indices.size(); i += 3) { // loop through every triangle
         int a = indices[i];
         int b = indices[i + 1];
         int c = indices[i + 2];
@@ -504,7 +503,7 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(
             if (u > v) std::swap(u, v);
             auto edge = std::make_pair(u, v);
 
-            if (edgeToCircumcenter.find(edge) != edgeToCircumcenter.end()) {
+            if (edgeToCircumcenter.find(edge) != edgeToCircumcenter.end()) { // If already added
                 voronoiEdges.emplace_back(edgeToCircumcenter[edge], circumcenter);
                 edgeToCircumcenter.erase(edge);
             }
