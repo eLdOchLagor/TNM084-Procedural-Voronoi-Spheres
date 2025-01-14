@@ -18,6 +18,7 @@
 #include <random>
 #include <math.h>
 #include <vector>
+#include <chrono>
 
 
 
@@ -29,6 +30,7 @@ double generateRandomValue(double min = 0, double max = 1);
 std::vector<float> generateRandomPointsOnSphere(int n, float r);
 std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
 
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
@@ -39,6 +41,10 @@ float lastFrame = 0.0f; // Time of last frame
 
 bool firstMouse = true;
 float lastX = 400.f, lastY = 300.f, yaw = -90.f, pitch = 0.f;
+
+int numberOfPoints = 100;
+int previousNumberOfPoints = numberOfPoints;
+float radius = 1;
 
 int main()
 {
@@ -134,61 +140,19 @@ int main()
 
     glfwSetCursorPosCallback(window, mouse_callback);
 
-    int numberOfPoints = 100;
-    float radius = 1;
-    std::vector<quickhull::Vector3<float>> points = generateGridPointsOnSphere(numberOfPoints, radius);
+    // OpenGL buffers
+    unsigned int VAO, VBO, EBO;
 
-    quickhull::QuickHull<float> qh;
-    auto hull = qh.getConvexHull(points, true, false);
-    const auto& indexBuffer = hull.getIndexBuffer();
-    const auto& vertexBuffer = hull.getVertexBuffer();
-
-    // Create a flattened vector of floats
-    std::vector<float> flattenedVertexBuffer;
-    flattenedVertexBuffer.reserve(vertexBuffer.size() * 3); // Reserve space for x, y, z
-
-    for (const auto& vertex : vertexBuffer) {
-        flattenedVertexBuffer.push_back(vertex.x);
-        flattenedVertexBuffer.push_back(vertex.y);
-        flattenedVertexBuffer.push_back(vertex.z);
-    }
-
-    std::vector<unsigned int> castedIndexBuffer(indexBuffer.begin(), indexBuffer.end());
-
-    unsigned int VAO;
+    // Initialize OpenGL buffers
     glGenVertexArrays(1, &VAO);
-    glBindVertexArray(VAO);
-
-    unsigned int VBO;
     glGenBuffers(1, &VBO);
-    // Copy vertices into VBO
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, flattenedVertexBuffer.size() * sizeof(float), flattenedVertexBuffer.data(), GL_STATIC_DRAW);
-
-    // Generate and bind the EBO
-    unsigned int EBO;
     glGenBuffers(1, &EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, castedIndexBuffer.size() * sizeof(unsigned int), castedIndexBuffer.data(), GL_STATIC_DRAW);
-
-    // Position attribute (location = 0)
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    /*
-    
-    // Vertex index attribute (location = 1)
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    */
-
-    glBindVertexArray(0);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    std::vector<unsigned int> castedIndexBuffer = generateAndUploadBuffers(VAO, VBO, EBO);
 
     glEnable(GL_DEPTH_TEST);
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+
 
     // Rendering loop
     while (!glfwWindowShouldClose(window))
@@ -210,6 +174,16 @@ int main()
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
         glUniform1i(numberOfPointsLoc, numberOfPoints);
+
+        //numberOfPoints = abs(sin(currentFrame)) * 100;
+        
+        // Detect change in numberOfPoints
+        if (numberOfPoints != previousNumberOfPoints) {
+            previousNumberOfPoints = numberOfPoints;
+            generateAndUploadBuffers(VAO, VBO, EBO); // Regenerate points and upload buffers
+        }
+
+        
 
         // Use the shader program
         glUseProgram(shaderProgram);
@@ -367,32 +341,84 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
     return randomPoints;
 }
 
-
 std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r) {
     std::vector<quickhull::Vector3<float>> points;
-    points.reserve(3 * n); // Reserve space for x, y, z coordinates of n points
 
-    int numInc = std::sqrt(n); // Number of divisions for azimuthal angle
-    int numAz = std::sqrt(n);   // Number of divisions for polar angle
+    float goldenRatio = (1.0f + sqrt(5.0f)) / 2.0f; // Golden ratio
 
-    for (int i = 0; i < numInc; ++i) {
-        float inc = 2.0f * M_PI * i / numInc; // Azimuthal angle (0 to 2π)
+    for (int i = 0; i < n; i++) {
+        float z = 1.0f - (2.0f * i) / (n - 1); // z goes from 1 to -1
+        float radiusAtZ = sqrt(1.0f - z * z); // Radius at this z
 
-        for (int j = 0; j < numAz; ++j) {
-            float az = M_PI * j / numAz; // Polar angle (0 to π)
+        float theta = 2.0f * M_PI * i / goldenRatio; // Golden angle increment
 
-            // Convert spherical coordinates to Cartesian coordinates
-            float x = r * std::sin(az) * std::cos(inc);
-            float y = r * std::sin(az) * std::sin(inc);
-            float z = r * std::cos(az);
+        float x = r * radiusAtZ * cos(theta);
+        float y = r * radiusAtZ * sin(theta);
+        
+        glm::vec3 pos{ x, y, z };
+        
+        // Generate a random direction vector for offset
+        glm::vec3 randomOffset{
+            generateRandomValue(-1.0, 1.0),
+            generateRandomValue(-1.0, 1.0),
+            generateRandomValue(-1.0, 1.0)
+        };
+        randomOffset = glm::normalize(randomOffset);
 
-            points.push_back(quickhull::Vector3<float>{ x, y, z });
-            //points.push_back(i);
-            //points.push_back(j);
-        }
+        double offsetMagnitude = generateRandomValue(0.0, 0.1); // Adjust the range as needed
+        randomOffset *= offsetMagnitude;
+
+        pos += randomOffset;
+        pos = glm::normalize(pos);
+
+        points.push_back(quickhull::Vector3<float>{pos.x, pos.y, pos.z});
     }
 
     return points;
+}
+
+std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO) {
+    auto start = std::chrono::high_resolution_clock::now(); // TIMER START
+
+    // Generate grid points
+    std::vector<quickhull::Vector3<float>> points = generateGridPointsOnSphere(numberOfPoints, radius);
+
+    quickhull::QuickHull<float> qh;
+    auto hull = qh.getConvexHull(points, true, false);
+    const auto& indexBuffer = hull.getIndexBuffer();
+    const auto& vertexBuffer = hull.getVertexBuffer();
+
+    // Flatten the vertex buffer
+    std::vector<float> flattenedVertexBuffer;
+    flattenedVertexBuffer.reserve(vertexBuffer.size() * 3);
+    for (const auto& vertex : vertexBuffer) {
+        flattenedVertexBuffer.push_back(vertex.x);
+        flattenedVertexBuffer.push_back(vertex.y);
+        flattenedVertexBuffer.push_back(vertex.z);
+    }
+
+    std::vector<unsigned int> castedIndexBuffer(indexBuffer.begin(), indexBuffer.end());
+
+    auto end = std::chrono::high_resolution_clock::now(); // TIMER STOP
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    std::cout << "The generation took " << duration << " milliseconds.\n";
+
+    // Update OpenGL buffers
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, flattenedVertexBuffer.size() * sizeof(float), flattenedVertexBuffer.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, castedIndexBuffer.size() * sizeof(unsigned int), castedIndexBuffer.data(), GL_STATIC_DRAW);
+
+    // Reconfigure vertex attributes
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+
+    return castedIndexBuffer;
 }
 
 
