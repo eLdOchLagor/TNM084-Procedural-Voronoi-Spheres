@@ -45,7 +45,7 @@ float lastFrame = 0.0f; // Time of last frame
 bool firstMouse = true;
 float lastX = 400.f, lastY = 300.f, yaw = -90.f, pitch = 0.f;
 
-int numberOfPoints = 100;
+int numberOfPoints = 10;
 int previousNumberOfPoints = numberOfPoints;
 float radius = 1;
 
@@ -206,8 +206,10 @@ int main()
 
         // Bind the VAO and draw
         glBindVertexArray(VAO);
-        glDrawElements(GL_TRIANGLES, castedIndexBuffer.size(), GL_UNSIGNED_INT, 0);
-       
+
+        // For drawing triangulation
+        //glDrawElements(GL_TRIANGLES, castedIndexBuffer.size(), GL_UNSIGNED_INT, 0);
+        glDrawArrays(GL_LINES, 0, 1764);
 
         // Unbind VAO
         glBindVertexArray(0);
@@ -389,7 +391,7 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
         };
         randomOffset = glm::normalize(randomOffset);
 
-        double offsetMagnitude = generateRandomValue(0.0, 0.2); // Adjust the range as needed
+        double offsetMagnitude = generateRandomValue(0.0, 0.0); // Adjust the range as needed
         randomOffset *= offsetMagnitude;
 
         pos += randomOffset;
@@ -404,6 +406,26 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO) {
     auto start = std::chrono::high_resolution_clock::now(); // TIMER START
 
+    std::vector<float> cubeVertices = {
+    -1.0f, -1.0f, -1.0f, // 0
+     1.0f, -1.0f, -1.0f, // 1
+     1.0f,  1.0f, -1.0f, // 2
+    -1.0f,  1.0f, -1.0f, // 3
+    -1.0f, -1.0f,  1.0f, // 4
+     1.0f, -1.0f,  1.0f, // 5
+     1.0f,  1.0f,  1.0f, // 6
+    -1.0f,  1.0f,  1.0f  // 7
+    };
+
+    std::vector<unsigned int> cubeIndices = {
+    0, 1, 2,  0, 2, 3, // Front face
+    1, 5, 6,  1, 6, 2, // Right face
+    5, 4, 7,  5, 7, 6, // Back face
+    4, 0, 3,  4, 3, 7, // Left face
+    3, 2, 6,  3, 6, 7, // Top face
+    4, 5, 1,  4, 1, 0  // Bottom face
+    };
+
     // Generate grid points
     std::vector<quickhull::Vector3<float>> points = generateGridPointsOnSphere(numberOfPoints, radius);
 
@@ -411,6 +433,7 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
     auto hull = qh.getConvexHull(points, true, false);
     const auto& indexBuffer = hull.getIndexBuffer();
     const auto& vertexBuffer = hull.getVertexBuffer();
+    
 
     // Flatten the vertex buffer
     std::vector<float> flattenedVertexBuffer;
@@ -444,19 +467,37 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "The generation took " << duration << " milliseconds.\n";
 
+    std::vector<glm::vec3> cubeCirc = computeCircumcenters(cubeVertices, cubeIndices);
+    std::vector<std::pair<glm::vec3, glm::vec3>> cubeEdges = computeVoronoiEdges(cubeCirc, cubeIndices);
+    std::vector<float> cubeEdgeVertices;
+    for (const auto& edge : cubeEdges) {
+        cubeEdgeVertices.push_back(edge.first.x);
+        cubeEdgeVertices.push_back(edge.first.y);
+        cubeEdgeVertices.push_back(edge.first.z);
+
+        cubeEdgeVertices.push_back(edge.second.x);
+        cubeEdgeVertices.push_back(edge.second.y);
+        cubeEdgeVertices.push_back(edge.second.z);
+    }
+
+
+    std::cout << voronoiEdgeVertices.size() << "\n";
+
     // Update OpenGL buffers
     glBindVertexArray(VAO);
 
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, flattenedVertexBuffer.size() * sizeof(float), flattenedVertexBuffer.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, voronoiEdgeVertices.size() * sizeof(float), voronoiEdgeVertices.data(), GL_DYNAMIC_DRAW);
 
+    // For drawing the triangulation
+    /*
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, castedIndexBuffer.size() * sizeof(unsigned int), castedIndexBuffer.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, cubeIndices.size() * sizeof(unsigned int), cubeIndices.data(), GL_DYNAMIC_DRAW);
+    */
 
-    // Reconfigure vertex attributes
+    // configure vertex attributes
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
-
     glBindVertexArray(0);
 
 
@@ -468,18 +509,36 @@ std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices,
     std::vector<glm::vec3> circumcenters;
 
     for (size_t i = 0; i < indices.size(); i += 3) {
+        // Get the three vertices of the triangle
         glm::vec3 A{ vertices[indices[i] * 3], vertices[indices[i] * 3 + 1], vertices[indices[i] * 3 + 2] };
         glm::vec3 B{ vertices[indices[i + 1] * 3], vertices[indices[i + 1] * 3 + 1], vertices[indices[i + 1] * 3 + 2] };
         glm::vec3 C{ vertices[indices[i + 2] * 3], vertices[indices[i + 2] * 3 + 1], vertices[indices[i + 2] * 3 + 2] };
 
-        // Compute circumcenter
+        // Calculate the vectors for two triangle edges
         glm::vec3 AB = B - A;
         glm::vec3 AC = C - A;
-        glm::vec3 normal = glm::cross(AB, AC);
-        glm::vec3 circumcenter = glm::normalize(glm::cross(glm::dot(AC, AC) * AB - glm::dot(AB, AB) * AC, normal));
 
-        // Normalize to lie on sphere
-        circumcenters.push_back(glm::normalize(circumcenter));
+        // Calculate the normal of the plane formed by the triangle
+        glm::vec3 normal = glm::normalize(glm::cross(AB, AC));
+
+        // Calculate midpoints of AB and AC
+        glm::vec3 midpointAB = (A + B) * 0.5f;
+        glm::vec3 midpointAC = (A + C) * 0.5f;
+
+        // Vectors perpendicular to AB and AC, lying on the plane
+        glm::vec3 perpAB = glm::cross(normal, AB);
+        glm::vec3 perpAC = glm::cross(normal, AC);
+
+        // Solve for intersection of lines (midpointAB + t1 * perpAB) and (midpointAC + t2 * perpAC)
+        glm::vec3 t = glm::cross(perpAC, midpointAB - midpointAC) / glm::dot(perpAC, perpAB);
+
+        // Circumcenter in 3D
+        glm::vec3 circumcenter = midpointAB + t * perpAB;
+
+        // Project the circumcenter onto the sphere surface
+        circumcenter = glm::normalize(circumcenter);
+
+        circumcenters.push_back(circumcenter);
     }
 
     return circumcenters;
