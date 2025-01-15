@@ -8,6 +8,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+// Quickhull for creating convex hull, CURRENTLY NOT USED
 #include <quickhull/QuickHull.hpp>
 #include <quickhull/Structs/Vector3.hpp>
 
@@ -21,6 +22,16 @@
 #include <chrono>
 #include <functional>
 
+// CGAL for computing delaunay triangulation
+#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
+#include <CGAL/Polyhedron_3.h>
+#include <CGAL/Surface_mesh.h>
+#include <CGAL/convex_hull_3.h>
+
+typedef CGAL::Exact_predicates_inexact_constructions_kernel  K;
+typedef CGAL::Polyhedron_3<K>                     Polyhedron_3;
+typedef K::Point_3                                Point_3;
+typedef CGAL::Surface_mesh<Point_3>               Surface_mesh;
 
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
@@ -29,7 +40,7 @@ std::string readShaderFile(const char* filePath);
 unsigned int compileShader(const char* shaderSource, GLenum shaderType);
 double generateRandomValue(double min = 0, double max = 1);
 std::vector<float> generateRandomPointsOnSphere(int n, float r);
-std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r);
+std::vector<Point_3> generateGridPointsOnSphere(int n, float r);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
 std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices, const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
@@ -45,7 +56,7 @@ float lastFrame = 0.0f; // Time of last frame
 bool firstMouse = true;
 float lastX = 400.f, lastY = 300.f, yaw = -90.f, pitch = 0.f;
 
-int numberOfPoints = 10;
+int numberOfPoints = 100;
 int previousNumberOfPoints = numberOfPoints;
 float radius = 1;
 
@@ -367,8 +378,8 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
     return randomPoints;
 }
 
-std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r) {
-    std::vector<quickhull::Vector3<float>> points;
+std::vector<Point_3> generateGridPointsOnSphere(int n, float r) {
+    std::vector<Point_3> points;
 
     float goldenRatio = (1.0f + sqrt(5.0f)) / 2.0f; // Golden ratio
 
@@ -397,7 +408,7 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
         pos += randomOffset;
         pos = glm::normalize(pos);
 
-        points.push_back(quickhull::Vector3<float>{pos.x, pos.y, pos.z});
+        points.push_back(Point_3{pos.x, pos.y, pos.z});
     }
 
     return points;
@@ -406,102 +417,23 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO) {
     auto start = std::chrono::high_resolution_clock::now(); // TIMER START
 
-    std::vector<float> cubeVertices = {
-    -1.0f, -1.0f, -1.0f, // 0
-     1.0f, -1.0f, -1.0f, // 1
-     1.0f,  1.0f, -1.0f, // 2
-    -1.0f,  1.0f, -1.0f, // 3
-    -1.0f, -1.0f,  1.0f, // 4
-     1.0f, -1.0f,  1.0f, // 5
-     1.0f,  1.0f,  1.0f, // 6
-    -1.0f,  1.0f,  1.0f  // 7
-    };
-
-    std::vector<unsigned int> cubeIndices = {
-    0, 1, 2,  0, 2, 3, // Front face
-    1, 5, 6,  1, 6, 2, // Right face
-    5, 4, 7,  5, 7, 6, // Back face
-    4, 0, 3,  4, 3, 7, // Left face
-    3, 2, 6,  3, 6, 7, // Top face
-    4, 5, 1,  4, 1, 0  // Bottom face
-    };
 
     // Generate grid points
-    std::vector<quickhull::Vector3<float>> points = generateGridPointsOnSphere(numberOfPoints, radius);
+    std::vector<Point_3> points = generateGridPointsOnSphere(numberOfPoints, radius);
 
-    quickhull::QuickHull<float> qh;
-    auto hull = qh.getConvexHull(points, true, false);
-    const auto& indexBuffer = hull.getIndexBuffer();
-    const auto& vertexBuffer = hull.getVertexBuffer();
-    
+    // define polyhedron to hold convex hull
+    Polyhedron_3 poly;
 
-    // Flatten the vertex buffer
-    std::vector<float> flattenedVertexBuffer;
-    flattenedVertexBuffer.reserve(vertexBuffer.size() * 3);
-    for (const auto& vertex : vertexBuffer) {
-        flattenedVertexBuffer.push_back(vertex.x);
-        flattenedVertexBuffer.push_back(vertex.y);
-        flattenedVertexBuffer.push_back(vertex.z);
-    }
+    // compute convex hull of non-collinear points
+    CGAL::convex_hull_3(points.begin(), points.end(), poly);
 
-    std::vector<unsigned int> castedIndexBuffer(indexBuffer.begin(), indexBuffer.end());
-
-    // Compute voronoi edges
-    std::vector<glm::vec3> circumcenters = computeCircumcenters(flattenedVertexBuffer, castedIndexBuffer);
-    std::vector<std::pair<glm::vec3, glm::vec3>> voronoiEdges = computeVoronoiEdges(flattenedVertexBuffer, circumcenters, castedIndexBuffer);
-
-    // Flatten Voronoi edges for OpenGL
-    std::vector<float> voronoiEdgeVertices;
-
-    for (const auto& edge : voronoiEdges) {
-        voronoiEdgeVertices.push_back(edge.first.x);
-        voronoiEdgeVertices.push_back(edge.first.y);
-        voronoiEdgeVertices.push_back(edge.first.z);
-
-        voronoiEdgeVertices.push_back(edge.second.x);
-        voronoiEdgeVertices.push_back(edge.second.y);
-        voronoiEdgeVertices.push_back(edge.second.z);
-    }
+    std::cout << "The convex hull contains " << poly.size_of_vertices() << " vertices" << std::endl;
 
     auto end = std::chrono::high_resolution_clock::now(); // TIMER STOP
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "The generation took " << duration << " milliseconds.\n";
 
-    std::vector<glm::vec3> cubeCirc = computeCircumcenters(cubeVertices, cubeIndices);
-    std::vector<std::pair<glm::vec3, glm::vec3>> cubeEdges = computeVoronoiEdges(cubeVertices, cubeCirc, cubeIndices);
-    std::vector<float> cubeEdgeVertices;
-    for (const auto& edge : cubeEdges) {
-        cubeEdgeVertices.push_back(edge.first.x);
-        cubeEdgeVertices.push_back(edge.first.y);
-        cubeEdgeVertices.push_back(edge.first.z);
-
-        cubeEdgeVertices.push_back(edge.second.x);
-        cubeEdgeVertices.push_back(edge.second.y);
-        cubeEdgeVertices.push_back(edge.second.z);
-    }
-
-
-    std::cout << voronoiEdgeVertices.size() << "\n";
-
-    // Update OpenGL buffers
-    glBindVertexArray(VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, voronoiEdgeVertices.size() * sizeof(float), voronoiEdgeVertices.data(), GL_DYNAMIC_DRAW);
-
-    // For drawing the triangulation
-    /*
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, cubeIndices.size() * sizeof(unsigned int), cubeIndices.data(), GL_DYNAMIC_DRAW);
-    */
-
-    // configure vertex attributes
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glBindVertexArray(0);
-
-
-    return castedIndexBuffer;
+    return std::vector<unsigned int>{};
 }
 
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices,
