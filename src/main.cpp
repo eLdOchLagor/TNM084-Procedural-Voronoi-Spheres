@@ -60,6 +60,8 @@ int numberOfPoints = 100;
 int previousNumberOfPoints = numberOfPoints;
 float radius = 1;
 
+bool renderTriangles = true;
+
 struct hash_pair {
     template <class T1, class T2>
     std::size_t operator()(const std::pair<T1, T2>& pair) const {
@@ -204,7 +206,7 @@ int main()
         // Detect change in numberOfPoints
         if (numberOfPoints != previousNumberOfPoints) {
             previousNumberOfPoints = numberOfPoints;
-            generateAndUploadBuffers(VAO, VBO, EBO); // Regenerate points and upload buffers
+            castedIndexBuffer = generateAndUploadBuffers(VAO, VBO, EBO); // Regenerate points and upload buffers
         }
 
         
@@ -219,8 +221,15 @@ int main()
         glBindVertexArray(VAO);
 
         // For drawing triangulation
-        //glDrawElements(GL_TRIANGLES, castedIndexBuffer.size(), GL_UNSIGNED_INT, 0);
-        glDrawArrays(GL_LINES, 0, 1764);
+        if (renderTriangles)
+        {
+            glDrawElements(GL_TRIANGLES, castedIndexBuffer.size(), GL_UNSIGNED_INT, 0);
+        }
+        else
+        {
+            glDrawArrays(GL_LINES, 0, 10000);
+        }
+        
 
         // Unbind VAO
         glBindVertexArray(0);
@@ -292,10 +301,22 @@ void processInput(GLFWwindow* window)
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 
-    const float keyDelay = 0.2f; // Delay in seconds
+    const float keyDelay = 0.01f; // Delay in seconds
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && (currentTime - lastTime > keyDelay))
     {
         numberOfPoints += 2;
+        lastTime = currentTime; // Update the last processed time
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS && (currentTime - lastTime > keyDelay))
+    {
+        numberOfPoints -= 2;
+        lastTime = currentTime; // Update the last processed time
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && (currentTime - lastTime > keyDelay))
+    {
+        renderTriangles = !renderTriangles;
         lastTime = currentTime; // Update the last processed time
     }
 }
@@ -433,7 +454,39 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "The generation took " << duration << " milliseconds.\n";
 
-    return std::vector<unsigned int>{};
+    if (renderTriangles)
+    {
+        // Update OpenGL buffers
+        glBindVertexArray(VAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, flattenedVertexBuffer.size() * sizeof(float), flattenedVertexBuffer.data(), GL_DYNAMIC_DRAW);
+
+        // For drawing the triangulation
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+        glBufferData(GL_ELEMENT_ARRAY_BUFFER, castedIndexBuffer.size() * sizeof(unsigned int), castedIndexBuffer.data(), GL_DYNAMIC_DRAW);
+        
+        // configure vertex attributes
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glBindVertexArray(0);
+    }
+    else
+    {
+        // Update OpenGL buffers
+        glBindVertexArray(VAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, voronoiEdgeVertices.size() * sizeof(float), voronoiEdgeVertices.data(), GL_DYNAMIC_DRAW);
+
+        // configure vertex attributes
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glBindVertexArray(0);
+    }
+
+
+    return castedIndexBuffer;
 }
 
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices,
@@ -461,14 +514,25 @@ std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices,
         glm::vec3 perpAB = glm::cross(normal, AB);
         glm::vec3 perpAC = glm::cross(normal, AC);
 
-        // Solve for intersection of lines (midpointAB + t1 * perpAB) and (midpointAC + t2 * perpAC)
-        glm::vec3 t = glm::cross(perpAC, midpointAB - midpointAC) / glm::dot(perpAC, perpAB);
+        float denom = glm::dot(perpAC, perpAB);
+        if (std::abs(denom) < 1e-6f) {
+            std::cerr << "Lines are nearly parallel, skipping circumcenter calculation.\n";
+            continue;
+        }
+        glm::vec3 t = glm::cross(perpAC, midpointAB - midpointAC) / denom;
 
         // Circumcenter in 3D
         glm::vec3 circumcenter = midpointAB + t * perpAB;
+        
+        if (glm::length(circumcenter) > 2.0)
+        {
+            std::cout << "Circumcenters: " << circumcenter.x << ", " << circumcenter.y << ", " << circumcenter.z << "\n";
+            //circumcenter = glm::vec3{ 0.0 };
+        }
+        
 
         // Project the circumcenter onto the sphere surface
-        circumcenter = glm::normalize(circumcenter);
+        // circumcenter = glm::normalize(circumcenter);
 
         circumcenters.push_back(circumcenter);
     }
@@ -501,6 +565,12 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vect
         }
 
         glm::vec3 circumcenter = circumcenters[i / 3];
+
+        if (circumcenter == glm::vec3(0.0))
+        {
+            std::cout << "Do not create triangle \n";
+            continue;
+        }
 
         auto insertEdge = [&](int u, int v) {
             if (u > v) std::swap(u, v);
