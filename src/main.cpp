@@ -32,7 +32,7 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r);
 std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
-std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
+std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices, const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
 
 glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
@@ -448,7 +448,7 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
 
     // Compute voronoi edges
     std::vector<glm::vec3> circumcenters = computeCircumcenters(flattenedVertexBuffer, castedIndexBuffer);
-    std::vector<std::pair<glm::vec3, glm::vec3>> voronoiEdges = computeVoronoiEdges(circumcenters, castedIndexBuffer);
+    std::vector<std::pair<glm::vec3, glm::vec3>> voronoiEdges = computeVoronoiEdges(flattenedVertexBuffer, circumcenters, castedIndexBuffer);
 
     // Flatten Voronoi edges for OpenGL
     std::vector<float> voronoiEdgeVertices;
@@ -468,7 +468,7 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
     std::cout << "The generation took " << duration << " milliseconds.\n";
 
     std::vector<glm::vec3> cubeCirc = computeCircumcenters(cubeVertices, cubeIndices);
-    std::vector<std::pair<glm::vec3, glm::vec3>> cubeEdges = computeVoronoiEdges(cubeCirc, cubeIndices);
+    std::vector<std::pair<glm::vec3, glm::vec3>> cubeEdges = computeVoronoiEdges(cubeVertices, cubeCirc, cubeIndices);
     std::vector<float> cubeEdgeVertices;
     for (const auto& edge : cubeEdges) {
         cubeEdgeVertices.push_back(edge.first.x);
@@ -544,7 +544,7 @@ std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices,
     return circumcenters;
 }
 
-std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(
+std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices,
     const std::vector<glm::vec3>& circumcenters,
     const std::vector<unsigned int>& indices) {
 
@@ -555,6 +555,18 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(
         int a = indices[i];
         int b = indices[i + 1];
         int c = indices[i + 2];
+
+        glm::vec3 A{ vertices[a], vertices[a + 1], vertices[a + 2] };
+        glm::vec3 B{ vertices[b], vertices[b + 1], vertices[b + 2] };
+        glm::vec3 C{ vertices[c], vertices[c + 1], vertices[c + 2] };
+
+        glm::vec3 AB = B - A;
+        glm::vec3 AC = C - A;
+        glm::vec3 normal = glm::cross(AB, AC);
+        if (glm::length(normal) < 0.001) {
+            // Skip degenerate triangle
+            continue;
+        }
 
         glm::vec3 circumcenter = circumcenters[i / 3];
 
