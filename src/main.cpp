@@ -22,17 +22,6 @@
 #include <chrono>
 #include <functional>
 
-// CGAL for computing delaunay triangulation
-#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
-#include <CGAL/Polyhedron_3.h>
-#include <CGAL/Surface_mesh.h>
-#include <CGAL/convex_hull_3.h>
-
-typedef CGAL::Exact_predicates_inexact_constructions_kernel  K;
-typedef CGAL::Polyhedron_3<K>                     Polyhedron_3;
-typedef K::Point_3                                Point_3;
-typedef CGAL::Surface_mesh<Point_3>               Surface_mesh;
-
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow* window);
@@ -40,7 +29,7 @@ std::string readShaderFile(const char* filePath);
 unsigned int compileShader(const char* shaderSource, GLenum shaderType);
 double generateRandomValue(double min = 0, double max = 1);
 std::vector<float> generateRandomPointsOnSphere(int n, float r);
-std::vector<Point_3> generateGridPointsOnSphere(int n, float r);
+std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r);
 void mouse_callback(GLFWwindow* window, double xpos, double ypos);
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
 std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices, const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
@@ -399,8 +388,8 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
     return randomPoints;
 }
 
-std::vector<Point_3> generateGridPointsOnSphere(int n, float r) {
-    std::vector<Point_3> points;
+std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r) {
+    std::vector<quickhull::Vector3<float>> points;
 
     float goldenRatio = (1.0f + sqrt(5.0f)) / 2.0f; // Golden ratio
 
@@ -412,9 +401,9 @@ std::vector<Point_3> generateGridPointsOnSphere(int n, float r) {
 
         float x = r * radiusAtZ * cos(theta);
         float y = r * radiusAtZ * sin(theta);
-        
+
         glm::vec3 pos{ x, y, z };
-        
+
         // Generate a random direction vector for offset
         glm::vec3 randomOffset{
             generateRandomValue(-1.0, 1.0),
@@ -429,7 +418,7 @@ std::vector<Point_3> generateGridPointsOnSphere(int n, float r) {
         pos += randomOffset;
         pos = glm::normalize(pos);
 
-        points.push_back(Point_3{pos.x, pos.y, pos.z});
+        points.push_back(quickhull::Vector3<float>{pos.x, pos.y, pos.z});
     }
 
     return points;
@@ -437,18 +426,42 @@ std::vector<Point_3> generateGridPointsOnSphere(int n, float r) {
 
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO) {
     auto start = std::chrono::high_resolution_clock::now(); // TIMER START
-
-
     // Generate grid points
-    std::vector<Point_3> points = generateGridPointsOnSphere(numberOfPoints, radius);
+    std::vector<quickhull::Vector3<float>> points = generateGridPointsOnSphere(numberOfPoints, radius);
 
-    // define polyhedron to hold convex hull
-    Polyhedron_3 poly;
+    quickhull::QuickHull<float> qh;
+    auto hull = qh.getConvexHull(points, true, false);
+    const auto& indexBuffer = hull.getIndexBuffer();
+    const auto& vertexBuffer = hull.getVertexBuffer();
 
-    // compute convex hull of non-collinear points
-    CGAL::convex_hull_3(points.begin(), points.end(), poly);
 
-    std::cout << "The convex hull contains " << poly.size_of_vertices() << " vertices" << std::endl;
+    // Flatten the vertex buffer
+    std::vector<float> flattenedVertexBuffer;
+    flattenedVertexBuffer.reserve(vertexBuffer.size() * 3);
+    for (const auto& vertex : vertexBuffer) {
+        flattenedVertexBuffer.push_back(vertex.x);
+        flattenedVertexBuffer.push_back(vertex.y);
+        flattenedVertexBuffer.push_back(vertex.z);
+    }
+
+    std::vector<unsigned int> castedIndexBuffer(indexBuffer.begin(), indexBuffer.end());
+
+    // Compute voronoi edges
+    std::vector<glm::vec3> circumcenters = computeCircumcenters(flattenedVertexBuffer, castedIndexBuffer);
+    std::vector<std::pair<glm::vec3, glm::vec3>> voronoiEdges = computeVoronoiEdges(flattenedVertexBuffer, circumcenters, castedIndexBuffer);
+
+    // Flatten Voronoi edges for OpenGL
+    std::vector<float> voronoiEdgeVertices;
+
+    for (const auto& edge : voronoiEdges) {
+        voronoiEdgeVertices.push_back(edge.first.x);
+        voronoiEdgeVertices.push_back(edge.first.y);
+        voronoiEdgeVertices.push_back(edge.first.z);
+
+        voronoiEdgeVertices.push_back(edge.second.x);
+        voronoiEdgeVertices.push_back(edge.second.y);
+        voronoiEdgeVertices.push_back(edge.second.z);
+    }
 
     auto end = std::chrono::high_resolution_clock::now(); // TIMER STOP
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -523,13 +536,13 @@ std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices,
 
         // Circumcenter in 3D
         glm::vec3 circumcenter = midpointAB + t * perpAB;
-        
+
         if (glm::length(circumcenter) > 2.0)
         {
             std::cout << "Circumcenters: " << circumcenter.x << ", " << circumcenter.y << ", " << circumcenter.z << "\n";
             //circumcenter = glm::vec3{ 0.0 };
         }
-        
+
 
         // Project the circumcenter onto the sphere surface
         // circumcenter = glm::normalize(circumcenter);
