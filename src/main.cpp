@@ -22,34 +22,16 @@
 #include <chrono>
 #include <functional>
 
+#include "Utility.h"
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height);
-void processInput(GLFWwindow* window);
-std::string readShaderFile(const char* filePath);
-unsigned int compileShader(const char* shaderSource, GLenum shaderType);
-double generateRandomValue(double min = 0, double max = 1);
+
 std::vector<float> generateRandomPointsOnSphere(int n, float r);
 std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r);
-void mouse_callback(GLFWwindow* window, double xpos, double ypos);
+
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
 std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices, const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
 
-glm::vec3 cameraPos = glm::vec3(0.0f, 0.0f, 3.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
-glm::vec3 cameraUp = glm::vec3(0.0f, 1.0f, 0.0f);
-
-float deltaTime = 0.0f;	// Time between current frame and last frame
-float lastFrame = 0.0f; // Time of last frame
-
-bool firstMouse = true;
-float lastX = 400.f, lastY = 300.f, yaw = -90.f, pitch = 0.f;
-
-int numberOfPoints = 100;
-int previousNumberOfPoints = numberOfPoints;
-float radius = 1;
-
-bool renderTriangles = true;
 
 struct hash_pair {
     template <class T1, class T2>
@@ -85,10 +67,10 @@ int main()
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
-
+    
     // Read the vertex shader source from the file
     //std::string vertexShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\VertexShader.vert");
-    std::string vertexShaderSource = readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\VertexShader.vert");
+    std::string vertexShaderSource = Utility::readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\VertexShader.vert");
     if (vertexShaderSource.empty())
     {
         return -1; // Exit if the file couldn't be read
@@ -96,7 +78,7 @@ int main()
 
     // Read the fragment shader source from the file
     //std::string fragmentShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\FragmentShader.frag");
-    std::string fragmentShaderSource = readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\FragmentShader.frag");
+    std::string fragmentShaderSource = Utility::readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\FragmentShader.frag");
     if (fragmentShaderSource.empty())
     {
         return -1; // Exit if the file couldn't be read
@@ -104,15 +86,15 @@ int main()
 
     // Read the geometry shader source from the file
     //std::string geometryShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\GeometryShader.geom");
-    std::string geometryShaderSource = readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\GeometryShader.geom");
+    std::string geometryShaderSource = Utility::readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\GeometryShader.geom");
     if (geometryShaderSource.empty())
     {
         return -1; // Exit if the file couldn't be read
     }
 
-    unsigned int vertexShader = compileShader(vertexShaderSource.c_str(), GL_VERTEX_SHADER);
-    unsigned int fragmentShader = compileShader(fragmentShaderSource.c_str(), GL_FRAGMENT_SHADER);
-    unsigned int geometryShader = compileShader(geometryShaderSource.c_str(), GL_GEOMETRY_SHADER);
+    unsigned int vertexShader = Utility::compileShader(vertexShaderSource.c_str(), GL_VERTEX_SHADER);
+    unsigned int fragmentShader = Utility::compileShader(fragmentShaderSource.c_str(), GL_FRAGMENT_SHADER);
+    unsigned int geometryShader = Utility::compileShader(geometryShaderSource.c_str(), GL_GEOMETRY_SHADER);
 
     unsigned int shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
@@ -151,9 +133,9 @@ int main()
     glViewport(0, 0, 800, 600);
 
     // Updates glViewport when window is resized
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetFramebufferSizeCallback(window, Utility::framebuffer_size_callback);
 
-    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetCursorPosCallback(window, Utility::mouse_callback);
 
     // OpenGL buffers
     unsigned int VAO, VBO, EBO;
@@ -176,7 +158,7 @@ int main()
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
         // Process user input
-        processInput(window);
+        Utility::processInput(window);
 
         view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
 
@@ -234,134 +216,7 @@ int main()
     return 0;
 }
 
-void framebuffer_size_callback(GLFWwindow* window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-}
 
-void mouse_callback(GLFWwindow* window, double xpos, double ypos)
-{
-    if (firstMouse)
-    {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
-
-    float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos;
-    lastX = xpos;
-    lastY = ypos;
-
-    float sensitivity = 0.05f;
-    xoffset *= sensitivity;
-    yoffset *= sensitivity;
-
-    yaw += xoffset;
-    pitch += yoffset;
-
-    if (pitch > 89.0f)
-        pitch = 89.0f;
-    if (pitch < -89.0f)
-        pitch = -89.0f;
-
-    glm::vec3 direction;
-    direction.x = cos(glm::radians(yaw)) * cos(glm::radians(pitch));
-    direction.y = sin(glm::radians(pitch));
-    direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
-    cameraFront = glm::normalize(direction);
-}
-
-void processInput(GLFWwindow* window)
-{
-    static float lastTime = 0.0f; // Last time the E key was processed
-    float currentTime = glfwGetTime();
-
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-
-    const float cameraSpeed = 2.5 * deltaTime;
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        cameraPos += cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        cameraPos -= cameraSpeed * cameraFront;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
-
-    const float keyDelay = 0.01f; // Delay in seconds
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && (currentTime - lastTime > keyDelay))
-    {
-        numberOfPoints += 2;
-        lastTime = currentTime; // Update the last processed time
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS && (currentTime - lastTime > keyDelay))
-    {
-        numberOfPoints -= 2;
-        lastTime = currentTime; // Update the last processed time
-    }
-
-    if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && (currentTime - lastTime > keyDelay))
-    {
-        renderTriangles = !renderTriangles;
-        lastTime = currentTime; // Update the last processed time
-    }
-}
-
-std::string readShaderFile(const char* filePath)
-{
-    std::ifstream shaderFile;
-    std::stringstream shaderStream;
-
-    // Open the file
-    shaderFile.open(filePath);
-    if (!shaderFile.is_open())
-    {
-        std::cerr << "Failed to open shader file: " << filePath << std::endl;
-        return "";
-    }
-
-    // Read the file into a string stream
-    shaderStream << shaderFile.rdbuf();
-
-    // Close the file
-    shaderFile.close();
-
-    // Convert the stream into a string and return
-    return shaderStream.str();
-}
-
-unsigned int compileShader(const char* shaderSource, GLenum shaderType)
-{
-    // Create the shader
-    unsigned int shader = glCreateShader(shaderType);
-
-    // Attach the source code and compile
-    glShaderSource(shader, 1, &shaderSource, NULL);
-    glCompileShader(shader);
-
-    // Check for compilation errors
-    int success;
-    char infoLog[512];
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
-        glGetShaderInfoLog(shader, 512, NULL, infoLog);
-        std::cerr << "ERROR::SHADER::COMPILATION_FAILED\n" << infoLog << std::endl;
-    }
-
-    return shader;
-}
-
-double generateRandomValue(double min, double max) {
-    static std::random_device rd;   // Obtain a random seed
-    static std::mt19937 gen(rd());  // Standard mersenne_twister_engine seeded with rd()
-    std::uniform_real_distribution<> dis(min, max);
-
-    return dis(rd);
-}
 
 // Genererar random seed points på sfär, kan användas om voronoi beräknas på cpu
 std::vector<float> generateRandomPointsOnSphere(int n, float r) {
@@ -370,8 +225,8 @@ std::vector<float> generateRandomPointsOnSphere(int n, float r) {
 
     for (size_t i = 0; i < n; i++)
     {
-        float randomNumberAz = generateRandomValue();
-        float randomNumberInc = generateRandomValue();
+        float randomNumberAz = Utility::generateRandomValue();
+        float randomNumberInc = Utility::generateRandomValue();
 
         float inclinationAngle = acos(2 * randomNumberInc - 1);
         float azimuthAngle = 2 * M_PI * randomNumberAz;
@@ -406,13 +261,13 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
 
         // Generate a random direction vector for offset
         glm::vec3 randomOffset{
-            generateRandomValue(-1.0, 1.0),
-            generateRandomValue(-1.0, 1.0),
-            generateRandomValue(-1.0, 1.0)
+            Utility::generateRandomValue(-1.0, 1.0),
+            Utility::generateRandomValue(-1.0, 1.0),
+            Utility::generateRandomValue(-1.0, 1.0)
         };
         randomOffset = glm::normalize(randomOffset);
 
-        double offsetMagnitude = generateRandomValue(0.0, 0.0); // Adjust the range as needed
+        double offsetMagnitude = Utility::generateRandomValue(0.0, 0.0); // Adjust the range as needed
         randomOffset *= offsetMagnitude;
 
         pos += randomOffset;
