@@ -27,6 +27,7 @@ int previousNumberOfPoints = numberOfPoints;
 float radius = 1;
 
 bool renderTriangles = false;
+bool renderPoints = false;
 
 std::vector<float> triangleStripVertices{};
 

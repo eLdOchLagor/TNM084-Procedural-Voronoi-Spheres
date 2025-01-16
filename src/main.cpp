@@ -12,7 +12,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-// Quickhull for creating convex hull, CURRENTLY NOT USED
+// Quickhull for creating convex hull
 #include <quickhull/QuickHull.hpp>
 #include <quickhull/Structs/Vector3.hpp>
 
@@ -224,10 +224,16 @@ int main()
         // For drawing triangulation
         if (renderTriangles)
         {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             glDrawElements(GL_TRIANGLES, castedIndexBuffer.size(), GL_UNSIGNED_INT, 0);
+        }
+        else if (renderPoints)
+        {
+            glDrawArrays(GL_POINTS, 0, 1000000);
         }
         else
         {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             glDrawArrays(GL_TRIANGLES, 0, 1000000);
         }
         
@@ -250,6 +256,16 @@ int main()
         }
 
         ImGui::ColorEdit3("Color", color);
+
+        if (ImGui::Checkbox("Display Delaunay triangles", &renderTriangles))
+        {
+            regenerateMesh = true;
+        }
+        ImGui::SameLine();
+        if (ImGui::Checkbox("Display seed points", &renderPoints))
+        {
+            regenerateMesh = true;
+        }
 
         if (ImGui::Button("Export"))
         {
@@ -400,6 +416,27 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
         glBufferData(GL_ELEMENT_ARRAY_BUFFER, castedIndexBuffer.size() * sizeof(unsigned int), castedIndexBuffer.data(), GL_DYNAMIC_DRAW);
         
+        // configure vertex attributes
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        glEnableVertexAttribArray(0);
+        glBindVertexArray(0);
+    }
+    else if (renderPoints)
+    {
+        std::vector<float> flattened;
+        flattened.reserve(points.size() * 3);
+        for (const auto& vertex : points) {
+            flattened.push_back(vertex.x);
+            flattened.push_back(vertex.y);
+            flattened.push_back(vertex.z);
+        }
+
+        // Update OpenGL buffers
+        glBindVertexArray(VAO);
+
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, flattened.size() * sizeof(float), flattened.data(), GL_DYNAMIC_DRAW);
+
         // configure vertex attributes
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
