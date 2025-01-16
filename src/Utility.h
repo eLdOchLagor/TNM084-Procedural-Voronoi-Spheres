@@ -28,7 +28,46 @@ float radius = 1;
 
 bool renderTriangles = false;
 
+std::vector<float> triangleStripVertices{};
+
 namespace Utility {
+
+    void exportToOBJ(const std::vector<float>& meshData, const std::string& filename) {
+        std::ofstream outFile(filename);
+
+        if (!outFile.is_open()) {
+            std::cerr << "Error: Could not open file for writing: " << filename << std::endl;
+            return;
+        }
+
+        // Track indices
+        int vertexIndex = 1; // OBJ indices start from 1
+
+        // Step 1: Write vertices and normals
+        for (size_t i = 0; i < meshData.size(); i += 6) {
+            // Vertex positions
+            outFile << "v " << meshData[i] << " " << meshData[i + 1] << " " << meshData[i + 2] << "\n";
+
+            // Normals
+            outFile << "vn " << meshData[i + 3] << " " << meshData[i + 4] << " " << meshData[i + 5] << "\n";
+        }
+
+        // Step 2: Write faces
+        for (size_t i = 0; i < meshData.size() / 6; i += 3) {
+            // Faces (referencing vertex and normal indices)
+            outFile << "f "
+                << vertexIndex << "//" << vertexIndex << " "
+                << vertexIndex + 1 << "//" << vertexIndex + 1 << " "
+                << vertexIndex + 2 << "//" << vertexIndex + 2 << "\n";
+
+            // Increment vertex index by 3 (one triangle = 3 vertices)
+            vertexIndex += 3;
+        }
+
+        outFile.close();
+        std::cout << "Mesh exported to " << filename << std::endl;
+    }
+
     std::string readShaderFile(const char* filePath)
     {
         std::ifstream shaderFile;
@@ -131,6 +170,8 @@ namespace Utility {
             cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 
         const float keyDelay = 0.01f; // Delay in seconds
+        const float keyDelayExport = 3.0f; // Delay in seconds
+
         if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && (currentTime - lastTime > keyDelay))
         {
             numberOfPoints += 2;
@@ -146,6 +187,12 @@ namespace Utility {
         if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS && (currentTime - lastTime > keyDelay))
         {
             renderTriangles = !renderTriangles;
+            lastTime = currentTime; // Update the last processed time
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && (currentTime - lastTime > keyDelayExport))
+        {
+            exportToOBJ(triangleStripVertices, "mesh.obj");
             lastTime = currentTime; // Update the last processed time
         }
     }

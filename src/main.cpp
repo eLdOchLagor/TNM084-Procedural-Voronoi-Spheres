@@ -31,7 +31,7 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
 std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices, const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
-std::vector<float> linesToTriangleStrip(const std::vector<float>& vertices, float width);
+std::vector<float> linesToTriangles(const std::vector<float>& vertices, float width);
 
 float viewportWidth = 800.0;
 float viewportHeight = 600.0;
@@ -203,7 +203,7 @@ int main()
         }
         else
         {
-            glDrawArrays(GL_TRIANGLES, 0, 10000);
+            glDrawArrays(GL_TRIANGLES, 0, 100000);
         }
         
 
@@ -323,7 +323,7 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         voronoiEdgeVertices.push_back(edge.second.z);
     }
 
-    std::vector<float> triangleStripVertices = linesToTriangleStrip(voronoiEdgeVertices, 0.01f);
+    triangleStripVertices = linesToTriangles(voronoiEdgeVertices, 0.01f);
 
     auto end = std::chrono::high_resolution_clock::now(); // TIMER STOP
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -446,9 +446,9 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vect
     return voronoiEdges;
 }
 
-std::vector<float> linesToTriangleStrip(const std::vector<float>& vertices, float width) {
+std::vector<float> linesToTriangles(const std::vector<float>& vertices, float width) {
     
-    std::vector<float> triangleStrip;
+    std::vector<float> triangles;
 
     for (size_t i = 0; i < vertices.size(); i += 6)
     {
@@ -467,56 +467,56 @@ std::vector<float> linesToTriangleStrip(const std::vector<float>& vertices, floa
         glm::vec3 normal = glm::normalize(midPoint);
 
         // Triangle 1
-        triangleStrip.push_back(newPoint1.x);
-        triangleStrip.push_back(newPoint1.y);
-        triangleStrip.push_back(newPoint1.z);
+        triangles.push_back(newPoint1.x);
+        triangles.push_back(newPoint1.y);
+        triangles.push_back(newPoint1.z);
         // Normal
-        triangleStrip.push_back(normal.x);
-        triangleStrip.push_back(normal.y);
-        triangleStrip.push_back(normal.z);
+        triangles.push_back(normal.x);
+        triangles.push_back(normal.y);
+        triangles.push_back(normal.z);
 
-        triangleStrip.push_back(newPoint3.x);
-        triangleStrip.push_back(newPoint3.y);
-        triangleStrip.push_back(newPoint3.z);
+        triangles.push_back(newPoint3.x);
+        triangles.push_back(newPoint3.y);
+        triangles.push_back(newPoint3.z);
         // Normal
-        triangleStrip.push_back(normal.x);
-        triangleStrip.push_back(normal.y);
-        triangleStrip.push_back(normal.z);
+        triangles.push_back(normal.x);
+        triangles.push_back(normal.y);
+        triangles.push_back(normal.z);
 
-        triangleStrip.push_back(newPoint2.x);
-        triangleStrip.push_back(newPoint2.y);
-        triangleStrip.push_back(newPoint2.z);
+        triangles.push_back(newPoint2.x);
+        triangles.push_back(newPoint2.y);
+        triangles.push_back(newPoint2.z);
         // Normal
-        triangleStrip.push_back(normal.x);
-        triangleStrip.push_back(normal.y);
-        triangleStrip.push_back(normal.z);
+        triangles.push_back(normal.x);
+        triangles.push_back(normal.y);
+        triangles.push_back(normal.z);
 
         // Triangle 2
-        triangleStrip.push_back(newPoint2.x);
-        triangleStrip.push_back(newPoint2.y);
-        triangleStrip.push_back(newPoint2.z);
+        triangles.push_back(newPoint2.x);
+        triangles.push_back(newPoint2.y);
+        triangles.push_back(newPoint2.z);
         // Normal
-        triangleStrip.push_back(normal.x);
-        triangleStrip.push_back(normal.y);
-        triangleStrip.push_back(normal.z);
+        triangles.push_back(normal.x);
+        triangles.push_back(normal.y);
+        triangles.push_back(normal.z);
 
-        triangleStrip.push_back(newPoint3.x);
-        triangleStrip.push_back(newPoint3.y);
-        triangleStrip.push_back(newPoint3.z);
+        triangles.push_back(newPoint3.x);
+        triangles.push_back(newPoint3.y);
+        triangles.push_back(newPoint3.z);
         // Normal
-        triangleStrip.push_back(normal.x);
-        triangleStrip.push_back(normal.y);
-        triangleStrip.push_back(normal.z);
+        triangles.push_back(normal.x);
+        triangles.push_back(normal.y);
+        triangles.push_back(normal.z);
 
-        triangleStrip.push_back(newPoint4.x);
-        triangleStrip.push_back(newPoint4.y);
-        triangleStrip.push_back(newPoint4.z);
+        triangles.push_back(newPoint4.x);
+        triangles.push_back(newPoint4.y);
+        triangles.push_back(newPoint4.z);
         // Normal
-        triangleStrip.push_back(normal.x);
-        triangleStrip.push_back(normal.y);
-        triangleStrip.push_back(normal.z);
+        triangles.push_back(normal.x);
+        triangles.push_back(normal.y);
+        triangles.push_back(normal.z);
     }
 
-    return triangleStrip;
+    return triangles;
 }
 
