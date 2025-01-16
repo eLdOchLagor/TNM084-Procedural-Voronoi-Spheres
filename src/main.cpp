@@ -31,7 +31,7 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
 std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices, const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
-std::vector<float> linesToTriangleStrip(const std::vector<float>& vertices);
+std::vector<float> linesToTriangleStrip(const std::vector<float>& vertices, float width);
 
 float viewportWidth = 800.0;
 float viewportHeight = 600.0;
@@ -131,6 +131,7 @@ int main()
     unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
     unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
     unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+    unsigned int cameraPosLoc = glGetUniformLocation(shaderProgram, "cameraPos");
     unsigned int numberOfPointsLoc = glGetUniformLocation(shaderProgram, "numberOfPoints");
 
     glViewport(0, 0, viewportWidth, viewportHeight);
@@ -173,6 +174,7 @@ int main()
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        glUniform3f(cameraPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
         glUniform1i(numberOfPointsLoc, numberOfPoints);
 
         //numberOfPoints = abs(sin(currentFrame)) * 100;
@@ -321,7 +323,7 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         voronoiEdgeVertices.push_back(edge.second.z);
     }
 
-    std::vector<float> triangleStripVertices = linesToTriangleStrip(voronoiEdgeVertices);
+    std::vector<float> triangleStripVertices = linesToTriangleStrip(voronoiEdgeVertices, 0.01f);
 
     auto end = std::chrono::high_resolution_clock::now(); // TIMER STOP
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -352,9 +354,14 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
         glBufferData(GL_ARRAY_BUFFER, triangleStripVertices.size() * sizeof(float), triangleStripVertices.data(), GL_DYNAMIC_DRAW);
 
-        // configure vertex attributes
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+        // Position attribute
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
+
+        // Normal attribute
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+        glEnableVertexAttribArray(1);
+
         glBindVertexArray(0);
     }
 
@@ -439,7 +446,7 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vect
     return voronoiEdges;
 }
 
-std::vector<float> linesToTriangleStrip(const std::vector<float>& vertices) {
+std::vector<float> linesToTriangleStrip(const std::vector<float>& vertices, float width) {
     
     std::vector<float> triangleStrip;
 
@@ -448,37 +455,66 @@ std::vector<float> linesToTriangleStrip(const std::vector<float>& vertices) {
         glm::vec3 p1{ vertices[i], vertices[i + 1], vertices[i + 2] };
         glm::vec3 p2{ vertices[i+3], vertices[i + 4], vertices[i + 5] };
 
-        glm::vec3 offset1 = glm::normalize(p1) * 0.02f;
-        glm::vec3 offset2 = glm::normalize(p2) * 0.02f;
+        glm::vec3 midPoint = (p1 + p2) / 2.0f;
 
-        glm::vec3 newPoint1 = p1 - offset1;
-        glm::vec3 newPoint2 = p2 - offset2;
-        glm::vec3 newPoint3 = p1 + offset1;
-        glm::vec3 newPoint4 = p2 + offset2;
+        glm::vec3 offset = glm::normalize(glm::cross(glm::normalize(midPoint), p2 - p1)) * width;
 
+        glm::vec3 newPoint1 = p1 - offset;
+        glm::vec3 newPoint2 = p2 - offset;
+        glm::vec3 newPoint3 = p1 + offset;
+        glm::vec3 newPoint4 = p2 + offset;
+
+        glm::vec3 normal = glm::normalize(midPoint);
+
+        // Triangle 1
         triangleStrip.push_back(newPoint1.x);
         triangleStrip.push_back(newPoint1.y);
         triangleStrip.push_back(newPoint1.z);
+        // Normal
+        triangleStrip.push_back(normal.x);
+        triangleStrip.push_back(normal.y);
+        triangleStrip.push_back(normal.z);
 
         triangleStrip.push_back(newPoint3.x);
         triangleStrip.push_back(newPoint3.y);
         triangleStrip.push_back(newPoint3.z);
+        // Normal
+        triangleStrip.push_back(normal.x);
+        triangleStrip.push_back(normal.y);
+        triangleStrip.push_back(normal.z);
 
         triangleStrip.push_back(newPoint2.x);
         triangleStrip.push_back(newPoint2.y);
         triangleStrip.push_back(newPoint2.z);
+        // Normal
+        triangleStrip.push_back(normal.x);
+        triangleStrip.push_back(normal.y);
+        triangleStrip.push_back(normal.z);
 
+        // Triangle 2
         triangleStrip.push_back(newPoint2.x);
         triangleStrip.push_back(newPoint2.y);
         triangleStrip.push_back(newPoint2.z);
+        // Normal
+        triangleStrip.push_back(normal.x);
+        triangleStrip.push_back(normal.y);
+        triangleStrip.push_back(normal.z);
 
         triangleStrip.push_back(newPoint3.x);
         triangleStrip.push_back(newPoint3.y);
         triangleStrip.push_back(newPoint3.z);
+        // Normal
+        triangleStrip.push_back(normal.x);
+        triangleStrip.push_back(normal.y);
+        triangleStrip.push_back(normal.z);
 
         triangleStrip.push_back(newPoint4.x);
         triangleStrip.push_back(newPoint4.y);
         triangleStrip.push_back(newPoint4.z);
+        // Normal
+        triangleStrip.push_back(normal.x);
+        triangleStrip.push_back(normal.y);
+        triangleStrip.push_back(normal.z);
     }
 
     return triangleStrip;

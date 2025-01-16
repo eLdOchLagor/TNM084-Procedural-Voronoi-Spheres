@@ -1,32 +1,23 @@
 #version 330 core
 layout (location = 0) in vec3 aPos;
-//layout(location = 1) in vec2 inIndex; // Grid index i
+layout(location = 1) in vec3 aNormal;
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-//flat out vec2 index;
-
-// Random3 function taken from Lab4 geometry shader
-vec3 random3(vec3 st)
-{
-    st = vec3( dot(st,vec3(127.1,311.7, 543.21)),
-              dot(st,vec3(269.5,183.3, 355.23)),
-              dot(st,vec3(846.34,364.45, 123.65)) ); // Haphazard additional numbers by IR
-    return -1.0 + 2.0*fract(sin(st)*43758.5453123);
-}
+out vec3 normal;
+out vec3 fragPos; // Pass fragment position to fragment shader
 
 void main()
 {
+    // Transform vertex position to world space
+    vec4 worldPos = model * vec4(aPos, 1.0);
+    fragPos = vec3(worldPos);
 
-    float jitterLevel = 0.05;
+    // Transform normal to world space
+    normal = mat3(transpose(inverse(model))) * aNormal;
 
-    vec3 randomOffset = random3(aPos.xyz);
-
-   
-    
-    vec4 newPosition = projection * view * model * vec4(aPos, 1.0);
-    //vec4 newPosition = vec4(aPos, 1.0);
-    gl_Position = newPosition;
+    // Final position
+    gl_Position = projection * view * worldPos;
 }
