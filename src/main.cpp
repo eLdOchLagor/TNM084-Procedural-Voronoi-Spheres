@@ -32,6 +32,8 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
 std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices, const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
 
+float viewportWidth = 800.0;
+float viewportHeight = 600.0;
 
 struct hash_pair {
     template <class T1, class T2>
@@ -52,7 +54,7 @@ int main()
    
     
     // 
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Voronoi Spheres", NULL, NULL);
+    GLFWwindow* window = glfwCreateWindow(viewportWidth, viewportHeight, "Voronoi Spheres", NULL, NULL);
     if (window == NULL)
     {
         std::cout << "Failed to create GLFW window" << std::endl;
@@ -123,14 +125,14 @@ int main()
     glm::mat4 view = glm::mat4(1.0f);
 
     glm::mat4 projection;
-    projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+    projection = glm::perspective(glm::radians(45.0f), viewportWidth / viewportHeight, 0.1f, 100.0f);
 
     unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
     unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
     unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
     unsigned int numberOfPointsLoc = glGetUniformLocation(shaderProgram, "numberOfPoints");
 
-    glViewport(0, 0, 800, 600);
+    glViewport(0, 0, viewportWidth, viewportHeight);
 
     // Updates glViewport when window is resized
     glfwSetFramebufferSizeCallback(window, Utility::framebuffer_size_callback);
