@@ -523,57 +523,226 @@ std::vector<float> linesToTriangles(const std::vector<float>& vertices, float wi
         glm::vec3 newPoint3 = p1 + offset;
         glm::vec3 newPoint4 = p2 + offset;
 
+        glm::vec3 newPoint5 = newPoint1 * (1.0f - 2.0f * width);
+        glm::vec3 newPoint6 = newPoint2 * (1.0f - 2.0f * width);
+        glm::vec3 newPoint7 = newPoint3 * (1.0f - 2.0f * width);
+        glm::vec3 newPoint8 = newPoint4 * (1.0f - 2.0f * width);
+
         glm::vec3 normal = glm::normalize(midPoint);
+        glm::vec3 normalSide = -glm::normalize(offset);
 
-        // Triangle 1
-        triangles.push_back(newPoint1.x);
-        triangles.push_back(newPoint1.y);
-        triangles.push_back(newPoint1.z);
-        // Normal
-        triangles.push_back(normal.x);
-        triangles.push_back(normal.y);
-        triangles.push_back(normal.z);
+        // ----------------- Outside faces
+        {
+            // Triangle 1
+            triangles.push_back(newPoint1.x);
+            triangles.push_back(newPoint1.y);
+            triangles.push_back(newPoint1.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
 
-        triangles.push_back(newPoint3.x);
-        triangles.push_back(newPoint3.y);
-        triangles.push_back(newPoint3.z);
-        // Normal
-        triangles.push_back(normal.x);
-        triangles.push_back(normal.y);
-        triangles.push_back(normal.z);
+            triangles.push_back(newPoint3.x);
+            triangles.push_back(newPoint3.y);
+            triangles.push_back(newPoint3.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
 
-        triangles.push_back(newPoint2.x);
-        triangles.push_back(newPoint2.y);
-        triangles.push_back(newPoint2.z);
-        // Normal
-        triangles.push_back(normal.x);
-        triangles.push_back(normal.y);
-        triangles.push_back(normal.z);
+            triangles.push_back(newPoint2.x);
+            triangles.push_back(newPoint2.y);
+            triangles.push_back(newPoint2.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
 
-        // Triangle 2
-        triangles.push_back(newPoint2.x);
-        triangles.push_back(newPoint2.y);
-        triangles.push_back(newPoint2.z);
-        // Normal
-        triangles.push_back(normal.x);
-        triangles.push_back(normal.y);
-        triangles.push_back(normal.z);
+            // Triangle 2
+            triangles.push_back(newPoint2.x);
+            triangles.push_back(newPoint2.y);
+            triangles.push_back(newPoint2.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
 
-        triangles.push_back(newPoint3.x);
-        triangles.push_back(newPoint3.y);
-        triangles.push_back(newPoint3.z);
-        // Normal
-        triangles.push_back(normal.x);
-        triangles.push_back(normal.y);
-        triangles.push_back(normal.z);
+            triangles.push_back(newPoint3.x);
+            triangles.push_back(newPoint3.y);
+            triangles.push_back(newPoint3.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
 
-        triangles.push_back(newPoint4.x);
-        triangles.push_back(newPoint4.y);
-        triangles.push_back(newPoint4.z);
-        // Normal
-        triangles.push_back(normal.x);
-        triangles.push_back(normal.y);
-        triangles.push_back(normal.z);
+            triangles.push_back(newPoint4.x);
+            triangles.push_back(newPoint4.y);
+            triangles.push_back(newPoint4.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
+        }
+
+        // ------------------ Inside faces
+        {
+            // Triangle 1
+            triangles.push_back(newPoint5.x);
+            triangles.push_back(newPoint5.y);
+            triangles.push_back(newPoint5.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
+
+            triangles.push_back(newPoint7.x);
+            triangles.push_back(newPoint7.y);
+            triangles.push_back(newPoint7.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
+
+            triangles.push_back(newPoint6.x);
+            triangles.push_back(newPoint6.y);
+            triangles.push_back(newPoint6.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
+
+            // Triangle 2
+            triangles.push_back(newPoint6.x);
+            triangles.push_back(newPoint6.y);
+            triangles.push_back(newPoint6.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
+
+            triangles.push_back(newPoint7.x);
+            triangles.push_back(newPoint7.y);
+            triangles.push_back(newPoint7.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
+
+            triangles.push_back(newPoint8.x);
+            triangles.push_back(newPoint8.y);
+            triangles.push_back(newPoint8.z);
+            // Normal
+            triangles.push_back(normal.x);
+            triangles.push_back(normal.y);
+            triangles.push_back(normal.z);
+        }
+
+        // ------------------ Side 1 faces
+        {
+            // Triangle 1
+            triangles.push_back(newPoint1.x);
+            triangles.push_back(newPoint1.y);
+            triangles.push_back(newPoint1.z);
+            // Normal
+            triangles.push_back(normalSide.x);
+            triangles.push_back(normalSide.y);
+            triangles.push_back(normalSide.z);
+
+            triangles.push_back(newPoint2.x);
+            triangles.push_back(newPoint2.y);
+            triangles.push_back(newPoint2.z);
+            // Normal
+            triangles.push_back(normalSide.x);
+            triangles.push_back(normalSide.y);
+            triangles.push_back(normalSide.z);
+
+            triangles.push_back(newPoint5.x);
+            triangles.push_back(newPoint5.y);
+            triangles.push_back(newPoint5.z);
+            // Normal
+            triangles.push_back(normalSide.x);
+            triangles.push_back(normalSide.y);
+            triangles.push_back(normalSide.z);
+
+            // Triangle 2
+            triangles.push_back(newPoint5.x);
+            triangles.push_back(newPoint5.y);
+            triangles.push_back(newPoint5.z);
+            // Normal
+            triangles.push_back(normalSide.x);
+            triangles.push_back(normalSide.y);
+            triangles.push_back(normalSide.z);
+
+            triangles.push_back(newPoint2.x);
+            triangles.push_back(newPoint2.y);
+            triangles.push_back(newPoint2.z);
+            // Normal
+            triangles.push_back(normalSide.x);
+            triangles.push_back(normalSide.y);
+            triangles.push_back(normalSide.z);
+
+            triangles.push_back(newPoint6.x);
+            triangles.push_back(newPoint6.y);
+            triangles.push_back(newPoint6.z);
+            // Normal
+            triangles.push_back(normalSide.x);
+            triangles.push_back(normalSide.y);
+            triangles.push_back(normalSide.z);
+        }
+
+        // ------------------ Side 2 faces
+        {
+            // Triangle 1
+            triangles.push_back(newPoint3.x);
+            triangles.push_back(newPoint3.y);
+            triangles.push_back(newPoint3.z);
+            // Normal
+            triangles.push_back(-normalSide.x);
+            triangles.push_back(-normalSide.y);
+            triangles.push_back(-normalSide.z);
+
+            triangles.push_back(newPoint7.x);
+            triangles.push_back(newPoint7.y);
+            triangles.push_back(newPoint7.z);
+            // Normal
+            triangles.push_back(-normalSide.x);
+            triangles.push_back(-normalSide.y);
+            triangles.push_back(-normalSide.z);
+
+            triangles.push_back(newPoint4.x);
+            triangles.push_back(newPoint4.y);
+            triangles.push_back(newPoint4.z);
+            // Normal
+            triangles.push_back(-normalSide.x);
+            triangles.push_back(-normalSide.y);
+            triangles.push_back(-normalSide.z);
+
+            // Triangle 2
+            triangles.push_back(newPoint4.x);
+            triangles.push_back(newPoint4.y);
+            triangles.push_back(newPoint4.z);
+            // Normal
+            triangles.push_back(-normalSide.x);
+            triangles.push_back(-normalSide.y);
+            triangles.push_back(-normalSide.z);
+
+            triangles.push_back(newPoint3.x);
+            triangles.push_back(newPoint3.y);
+            triangles.push_back(newPoint3.z);
+            // Normal
+            triangles.push_back(-normalSide.x);
+            triangles.push_back(-normalSide.y);
+            triangles.push_back(-normalSide.z);
+
+            triangles.push_back(newPoint8.x);
+            triangles.push_back(newPoint8.y);
+            triangles.push_back(newPoint8.z);
+            // Normal
+            triangles.push_back(-normalSide.x);
+            triangles.push_back(-normalSide.y);
+            triangles.push_back(-normalSide.z);
+        }
+        
     }
 
     return triangles;
