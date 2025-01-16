@@ -368,38 +368,11 @@ std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices,
         glm::vec3 A{ vertices[indices[i] * 3], vertices[indices[i] * 3 + 1], vertices[indices[i] * 3 + 2] };
         glm::vec3 B{ vertices[indices[i + 1] * 3], vertices[indices[i + 1] * 3 + 1], vertices[indices[i + 1] * 3 + 2] };
         glm::vec3 C{ vertices[indices[i + 2] * 3], vertices[indices[i + 2] * 3 + 1], vertices[indices[i + 2] * 3 + 2] };
+        
+        glm::vec3 a = A - C;
+        glm::vec3 b = B - C;
 
-        // Calculate the vectors for two triangle edges
-        glm::vec3 AB = B - A;
-        glm::vec3 AC = C - A;
-
-        // Calculate the normal of the plane formed by the triangle
-        glm::vec3 normal = glm::normalize(glm::cross(AB, AC));
-
-        // Calculate midpoints of AB and AC
-        glm::vec3 midpointAB = (A + B) * 0.5f;
-        glm::vec3 midpointAC = (A + C) * 0.5f;
-
-        // Vectors perpendicular to AB and AC, lying on the plane
-        glm::vec3 perpAB = glm::cross(normal, AB);
-        glm::vec3 perpAC = glm::cross(normal, AC);
-
-        float denom = glm::dot(perpAC, perpAB);
-        if (std::abs(denom) < 1e-6f) {
-            std::cerr << "Lines are nearly parallel, skipping circumcenter calculation.\n";
-            continue;
-        }
-        glm::vec3 t = glm::cross(perpAC, midpointAB - midpointAC) / denom;
-
-        // Circumcenter in 3D
-        glm::vec3 circumcenter = midpointAB + t * perpAB;
-
-        if (glm::length(circumcenter) > 2.0)
-        {
-            std::cout << "Circumcenters: " << circumcenter.x << ", " << circumcenter.y << ", " << circumcenter.z << "\n";
-            //circumcenter = glm::vec3{ 0.0 };
-        }
-
+        glm::vec3 circumcenter = glm::cross((glm::length(a) * glm::length(a) * b - glm::length(b) * glm::length(b) * a), glm::cross(a, b)) / (2.0f * glm::length(glm::cross(a, b)) * glm::length(glm::cross(a, b))) + C;
 
         // Project the circumcenter onto the sphere surface
         // circumcenter = glm::normalize(circumcenter);

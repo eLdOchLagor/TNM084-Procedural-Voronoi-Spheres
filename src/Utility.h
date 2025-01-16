@@ -26,7 +26,7 @@ int numberOfPoints = 100;
 int previousNumberOfPoints = numberOfPoints;
 float radius = 1;
 
-bool renderTriangles = true;
+bool renderTriangles = false;
 
 namespace Utility {
     std::string readShaderFile(const char* filePath)
