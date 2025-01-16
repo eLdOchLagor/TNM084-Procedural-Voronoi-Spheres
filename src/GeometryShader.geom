@@ -2,16 +2,15 @@
 
 #define M_PI 3.1415926535897932384626433832795
 
-layout(points) in;
-layout(line_strip, max_vertices = 2) out;
+layout(lines) in;
+layout(triangle_strip, max_vertices = 4) out;
 
 uniform int numberOfPoints;
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-flat in vec2 index[];
-flat out vec2 outIndex;
+
 
 // Random3 function taken from Lab4 geometry shader
 vec3 random3(vec3 st)
@@ -24,29 +23,33 @@ vec3 random3(vec3 st)
 
 void main()
 {
-    /*
-    for( int i=-1; i<=1; i++ ) {
+    vec4 quadCL = gl_in[0].gl_Position;
+    vec4 quadCR = gl_in[1].gl_Position;
 
-        float inc = 2.0f * M_PI * (index[0].x + i) / sqrt(numberOfPoints);
+    vec3 offsetCL = vec3(normalize(quadCL)) * 0.02;
+    vec3 offsetCR = vec3(normalize(quadCR)) * 0.02;
+    
+    vec4 quadTL = quadCL + vec4(-offsetCL,0.0);
+    vec4 quadTR = quadCR + vec4(-offsetCR,0.0);
+    vec4 quadBL = quadCL + vec4(offsetCL,0.0);    
+    vec4 quadBR = quadCR + vec4(offsetCR,0.0);
 
-        for( int j=-1; j<=1; j++ ) {
-            float az = M_PI * (index[0].y + j) / sqrt(numberOfPoints);
+    //Push the quad
 
-            vec3 neighborPoint = vec3(1.0 * sin(az) * cos(inc), 1.0 * sin(az) * sin(inc), 1.0 * cos(az));
-        }
-    }
-    */
-
-    outIndex = index[0];
-
-    vec4 spherePoint = gl_in[0].gl_Position;
-
-    gl_Position = projection * view * model * spherePoint;
+    //Quad
+    //0: TL
+    gl_Position = projection * view * model * quadTL;
+    EmitVertex();
+    //1: BL
+    gl_Position = projection * view * model * quadBL;
+    EmitVertex();
+    //2: TR
+    gl_Position = projection * view * model * quadTR;
+    EmitVertex();
+    //3: BR
+    gl_Position = projection * view * model * quadBR;
     EmitVertex();
 
-    vec4 endPoint = spherePoint * vec4(1.1, 1.1, 1.1, 1.0);
-    gl_Position = projection * view * model * endPoint;
-    EmitVertex();
+    EndPrimitive(); 
 
-    EndPrimitive();
 }

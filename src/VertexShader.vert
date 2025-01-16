@@ -24,7 +24,9 @@ void main()
 
     vec3 randomOffset = random3(aPos.xyz);
 
-    //index = inIndex;
-    vec4 newPosition = vec4(normalize(aPos + randomOffset * jitterLevel), 1.0);
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
+   
+    
+    //vec4 newPosition = projection * view * model * vec4(aPos, 1.0);
+    vec4 newPosition = vec4(aPos, 1.0);
+    gl_Position = newPosition;
 }

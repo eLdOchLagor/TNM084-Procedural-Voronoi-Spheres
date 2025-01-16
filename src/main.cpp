@@ -101,7 +101,7 @@ int main()
     unsigned int shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
-    //glAttachShader(shaderProgram, geometryShader);
+    glAttachShader(shaderProgram, geometryShader);
     glLinkProgram(shaderProgram);
 
     // Check for linking errors
@@ -149,7 +149,7 @@ int main()
     std::vector<unsigned int> castedIndexBuffer = generateAndUploadBuffers(VAO, VBO, EBO);
 
     glEnable(GL_DEPTH_TEST);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 
 
@@ -269,7 +269,7 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
         };
         randomOffset = glm::normalize(randomOffset);
 
-        double offsetMagnitude = Utility::generateRandomValue(0.0, 0.0); // Adjust the range as needed
+        double offsetMagnitude = Utility::generateRandomValue(0.0, 0.2); // Adjust the range as needed
         randomOffset *= offsetMagnitude;
 
         pos += randomOffset;
