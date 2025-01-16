@@ -2,6 +2,10 @@
 
 #define _USE_MATH_DEFINES
 
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_glfw.h"
+#include "imgui/imgui_impl_opengl3.h"
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -36,6 +40,9 @@ std::vector<float> linesToTriangles(const std::vector<float>& vertices, float wi
 float viewportWidth = 800.0;
 float viewportHeight = 600.0;
 
+float randomness = 0.5f;
+float width = 0.005f;
+
 struct hash_pair {
     template <class T1, class T2>
     std::size_t operator()(const std::pair<T1, T2>& pair) const {
@@ -63,7 +70,9 @@ int main()
         return -1;
     }
     glfwMakeContextCurrent(window);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // UNCOMMENT for mouse movement
+    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
@@ -139,7 +148,8 @@ int main()
     // Updates glViewport when window is resized
     glfwSetFramebufferSizeCallback(window, Utility::framebuffer_size_callback);
 
-    glfwSetCursorPosCallback(window, Utility::mouse_callback);
+    // UNCOMMENT for mouse movement
+    //glfwSetCursorPosCallback(window, Utility::mouse_callback);
 
     // OpenGL buffers
     unsigned int VAO, VBO, EBO;
@@ -152,6 +162,13 @@ int main()
 
     glEnable(GL_DEPTH_TEST);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    ImGui::StyleColorsDark();
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL3_Init("#version 330");
 
 
 
@@ -169,6 +186,10 @@ int main()
         // Clear the screen
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
 
         // Pass uniforms
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
@@ -210,12 +231,29 @@ int main()
         // Unbind VAO
         glBindVertexArray(0);
 
+        ImGui::Begin("User interface");
+        ImGui::SliderFloat("Randomness", &randomness, 0.0f, 1.0f);
+        ImGui::SliderInt("Number of seeds", &numberOfPoints, 5, 2000);
+        ImGui::SliderFloat("Line width", &width, 0.001f, 0.1f);
+        if (ImGui::Button("Export"))
+        {
+            //... my_code 
+        }
+        ImGui::End();
+
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         // Swap the buffers
         glfwSwapBuffers(window);
 
         // Poll for events
         glfwPollEvents();
     }
+
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
 
     glfwTerminate();
     return 0;
@@ -272,7 +310,7 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
         };
         randomOffset = glm::normalize(randomOffset);
 
-        double offsetMagnitude = Utility::generateRandomValue(0.0, 0.2); // Adjust the range as needed
+        double offsetMagnitude = Utility::generateRandomValue(0.0, randomness); // Adjust the range as needed
         randomOffset *= offsetMagnitude;
 
         pos += randomOffset;
@@ -323,7 +361,7 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         voronoiEdgeVertices.push_back(edge.second.z);
     }
 
-    triangleStripVertices = linesToTriangles(voronoiEdgeVertices, 0.01f);
+    triangleStripVertices = linesToTriangles(voronoiEdgeVertices, width);
 
     auto end = std::chrono::high_resolution_clock::now(); // TIMER STOP
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
