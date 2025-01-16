@@ -5,10 +5,10 @@ in vec3 normal; // from vertex shader
 in vec3 fragPos; // add this to the vertex shader output
 
 uniform vec3 cameraPos;
+uniform vec3 objectColor;
 
 vec3 lightPos = vec3(0.0, 2.0, 2.0);
 vec3 lightColor = vec3(1.0, 1.0, 1.0);
-vec3 objectColor = vec3(0.2, 0.2, 0.2);
 
 void main()
 {

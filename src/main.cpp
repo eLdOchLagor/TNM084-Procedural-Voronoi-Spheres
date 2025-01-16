@@ -37,8 +37,8 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vect
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
 std::vector<float> linesToTriangles(const std::vector<float>& vertices, float width);
 
-float viewportWidth = 800.0;
-float viewportHeight = 600.0;
+float viewportWidth = 1500.0;
+float viewportHeight = 1000.0;
 
 float randomness = 0.5f;
 float width = 0.005f;
@@ -137,11 +137,14 @@ int main()
     glm::mat4 projection;
     projection = glm::perspective(glm::radians(45.0f), viewportWidth / viewportHeight, 0.1f, 100.0f);
 
+    float color[3] = {0.2f, 0.2f, 0.2f};
+
     unsigned int modelLoc = glGetUniformLocation(shaderProgram, "model");
     unsigned int viewLoc = glGetUniformLocation(shaderProgram, "view");
     unsigned int projectionLoc = glGetUniformLocation(shaderProgram, "projection");
     unsigned int cameraPosLoc = glGetUniformLocation(shaderProgram, "cameraPos");
     unsigned int numberOfPointsLoc = glGetUniformLocation(shaderProgram, "numberOfPoints");
+    unsigned int colorLoc = glGetUniformLocation(shaderProgram, "objectColor");
 
     glViewport(0, 0, viewportWidth, viewportHeight);
 
@@ -196,6 +199,7 @@ int main()
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
         glUniform3f(cameraPosLoc, cameraPos.x, cameraPos.y, cameraPos.z);
+        glUniform3f(colorLoc, color[0], color[1], color[2]);
         glUniform1i(numberOfPointsLoc, numberOfPoints);
 
         //numberOfPoints = abs(sin(currentFrame)) * 100;
@@ -232,13 +236,30 @@ int main()
         glBindVertexArray(0);
 
         ImGui::Begin("User interface");
-        ImGui::SliderFloat("Randomness", &randomness, 0.0f, 1.0f);
-        ImGui::SliderInt("Number of seeds", &numberOfPoints, 5, 2000);
-        ImGui::SliderFloat("Line width", &width, 0.001f, 0.1f);
+        bool regenerateMesh = false;
+
+        // Check if any of the sliders changed
+        if (ImGui::SliderFloat("Randomness", &randomness, 0.0f, 1.0f)) {
+            regenerateMesh = true;
+        }
+        if (ImGui::SliderInt("Number of seeds", &numberOfPoints, 5, 2000)) {
+            regenerateMesh = true;
+        }
+        if (ImGui::SliderFloat("Line width", &width, 0.001f, 0.03f)) {
+            regenerateMesh = true;
+        }
+
+        ImGui::ColorEdit3("Color", color);
+
         if (ImGui::Button("Export"))
         {
-            //... my_code 
+            Utility::exportToOBJ(triangleStripVertices, "mesh.obj");
         }
+
+        if (regenerateMesh) {
+            castedIndexBuffer = generateAndUploadBuffers(VAO, VBO, EBO); // Regenerate points and upload buffers
+        }
+
         ImGui::End();
 
         ImGui::Render();
@@ -423,7 +444,7 @@ std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices,
         glm::vec3 circumcenter = glm::cross((glm::length(a) * glm::length(a) * b - glm::length(b) * glm::length(b) * a), glm::cross(a, b)) / (2.0f * glm::length(glm::cross(a, b)) * glm::length(glm::cross(a, b))) + C;
 
         // Project the circumcenter onto the sphere surface
-        // circumcenter = glm::normalize(circumcenter);
+        circumcenter = glm::normalize(circumcenter);
 
         circumcenters.push_back(circumcenter);
     }
