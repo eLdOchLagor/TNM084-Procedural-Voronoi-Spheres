@@ -31,6 +31,7 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
 std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices, const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
+std::vector<float> linesToTriangleStrip(const std::vector<float>& vertices);
 
 float viewportWidth = 800.0;
 float viewportHeight = 600.0;
@@ -101,7 +102,7 @@ int main()
     unsigned int shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
-    glAttachShader(shaderProgram, geometryShader);
+   // glAttachShader(shaderProgram, geometryShader);
     glLinkProgram(shaderProgram);
 
     // Check for linking errors
@@ -200,7 +201,7 @@ int main()
         }
         else
         {
-            glDrawArrays(GL_LINES, 0, 10000);
+            glDrawArrays(GL_TRIANGLES, 0, 10000);
         }
         
 
@@ -320,6 +321,8 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         voronoiEdgeVertices.push_back(edge.second.z);
     }
 
+    std::vector<float> triangleStripVertices = linesToTriangleStrip(voronoiEdgeVertices);
+
     auto end = std::chrono::high_resolution_clock::now(); // TIMER STOP
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     std::cout << "The generation took " << duration << " milliseconds.\n";
@@ -347,7 +350,7 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         glBindVertexArray(VAO);
 
         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, voronoiEdgeVertices.size() * sizeof(float), voronoiEdgeVertices.data(), GL_DYNAMIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, triangleStripVertices.size() * sizeof(float), triangleStripVertices.data(), GL_DYNAMIC_DRAW);
 
         // configure vertex attributes
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
@@ -434,5 +437,50 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vect
     }
 
     return voronoiEdges;
+}
+
+std::vector<float> linesToTriangleStrip(const std::vector<float>& vertices) {
+    
+    std::vector<float> triangleStrip;
+
+    for (size_t i = 0; i < vertices.size(); i += 6)
+    {
+        glm::vec3 p1{ vertices[i], vertices[i + 1], vertices[i + 2] };
+        glm::vec3 p2{ vertices[i+3], vertices[i + 4], vertices[i + 5] };
+
+        glm::vec3 offset1 = glm::normalize(p1) * 0.02f;
+        glm::vec3 offset2 = glm::normalize(p2) * 0.02f;
+
+        glm::vec3 newPoint1 = p1 - offset1;
+        glm::vec3 newPoint2 = p2 - offset2;
+        glm::vec3 newPoint3 = p1 + offset1;
+        glm::vec3 newPoint4 = p2 + offset2;
+
+        triangleStrip.push_back(newPoint1.x);
+        triangleStrip.push_back(newPoint1.y);
+        triangleStrip.push_back(newPoint1.z);
+
+        triangleStrip.push_back(newPoint3.x);
+        triangleStrip.push_back(newPoint3.y);
+        triangleStrip.push_back(newPoint3.z);
+
+        triangleStrip.push_back(newPoint2.x);
+        triangleStrip.push_back(newPoint2.y);
+        triangleStrip.push_back(newPoint2.z);
+
+        triangleStrip.push_back(newPoint2.x);
+        triangleStrip.push_back(newPoint2.y);
+        triangleStrip.push_back(newPoint2.z);
+
+        triangleStrip.push_back(newPoint3.x);
+        triangleStrip.push_back(newPoint3.y);
+        triangleStrip.push_back(newPoint3.z);
+
+        triangleStrip.push_back(newPoint4.x);
+        triangleStrip.push_back(newPoint4.y);
+        triangleStrip.push_back(newPoint4.z);
+    }
+
+    return triangleStrip;
 }
 

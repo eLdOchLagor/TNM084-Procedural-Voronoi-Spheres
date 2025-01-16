@@ -26,7 +26,7 @@ void main()
 
    
     
-    //vec4 newPosition = projection * view * model * vec4(aPos, 1.0);
-    vec4 newPosition = vec4(aPos, 1.0);
+    vec4 newPosition = projection * view * model * vec4(aPos, 1.0);
+    //vec4 newPosition = vec4(aPos, 1.0);
     gl_Position = newPosition;
 }
