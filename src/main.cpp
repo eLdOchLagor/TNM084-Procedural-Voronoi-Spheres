@@ -228,7 +228,7 @@ int main()
         }
         else
         {
-            glDrawArrays(GL_TRIANGLES, 0, 100000);
+            glDrawArrays(GL_TRIANGLES, 0, 1000000);
         }
         
 
