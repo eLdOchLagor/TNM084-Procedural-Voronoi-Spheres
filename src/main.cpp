@@ -31,14 +31,15 @@
 
 std::vector<float> generateRandomPointsOnSphere(int n, float r);
 std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r);
+void GenerateAnchors(std::vector<float>& points, int n);
 
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
 std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices, const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
 std::vector<float> linesToTriangles(const std::vector<float>& vertices, float width);
 
-float viewportWidth = 1500.0;
-float viewportHeight = 1000.0;
+float viewportWidth = 800.0;
+float viewportHeight = 500.0;
 
 float randomness = 0.5f;
 float width = 0.005f;
@@ -81,24 +82,21 @@ int main()
     }
     
     // Read the vertex shader source from the file
-    //std::string vertexShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\VertexShader.vert");
-    std::string vertexShaderSource = Utility::readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\VertexShader.vert");
+    std::string vertexShaderSource = Utility::readShaderFile("..\\src\\VertexShader.vert");
     if (vertexShaderSource.empty())
     {
         return -1; // Exit if the file couldn't be read
     }
 
     // Read the fragment shader source from the file
-    //std::string fragmentShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\FragmentShader.frag");
-    std::string fragmentShaderSource = Utility::readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\FragmentShader.frag");
+    std::string fragmentShaderSource = Utility::readShaderFile("..\\src\\FragmentShader.frag");
     if (fragmentShaderSource.empty())
     {
         return -1; // Exit if the file couldn't be read
     }
 
     // Read the geometry shader source from the file
-    //std::string geometryShaderSource = readShaderFile("C:\\TNM084 project\\VoronoiSphere\\src\\GeometryShader.geom");
-    std::string geometryShaderSource = Utility::readShaderFile("C:\\TNM084\\VoronoiSpheres\\src\\GeometryShader.geom");
+    std::string geometryShaderSource = Utility::readShaderFile("..\\src\\GeometryShader.geom");
     if (geometryShaderSource.empty())
     {
         return -1; // Exit if the file couldn't be read
@@ -397,6 +395,8 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         voronoiEdgeVertices.push_back(edge.second.y);
         voronoiEdgeVertices.push_back(edge.second.z);
     }
+
+    GenerateAnchors(voronoiEdgeVertices, 10);
 
     triangleStripVertices = linesToTriangles(voronoiEdgeVertices, width);
 
@@ -783,5 +783,33 @@ std::vector<float> linesToTriangles(const std::vector<float>& vertices, float wi
     }
 
     return triangles;
+}
+
+void GenerateAnchors(std::vector<float>& points, int n) {
+    std::vector<glm::vec3> randomPoints;
+
+    // Select n random points
+    for (int i = 0; i < n; i++)
+    {
+        std::cout << i << "\n";
+        int randomIndex = Utility::generateRandomValue(0.0, 1.0) * ((points.size() - 1)/3);
+        std::cout << randomIndex << "\n";
+        randomPoints.push_back(glm::vec3{points[randomIndex], points[randomIndex+1], points[randomIndex+2]});
+    }
+
+    for (size_t i = 0; i < randomPoints.size(); i++)
+    {
+        glm::vec3 currentPoint = randomPoints[i];
+        glm::vec3 newPoint = currentPoint * 2.0f;
+
+        points.push_back(currentPoint.x);
+        points.push_back(currentPoint.y);
+        points.push_back(currentPoint.z);
+
+        points.push_back(newPoint.x);
+        points.push_back(newPoint.y);
+        points.push_back(newPoint.z);
+    }
+    
 }
 
