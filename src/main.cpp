@@ -795,6 +795,18 @@ void GenerateAnchors(std::vector<float>& points, int n) {
     for (int i = 0; i < n; i++)
     {
         int randomIndex = Utility::generateRandomValue(0.0, 1.0) * ((points.size()/3) - 1);
+
+        // If I want to move the point out aswell, brute force fix since there are duplicate points
+        for (size_t i = 0; i < points.size(); i++)
+        {
+            if (points[i] == points[randomIndex])
+            {
+                points[randomIndex] *= 1.2;
+                points[randomIndex + 1] *= 1.2;
+                points[randomIndex + 2] *= 1.2;
+            }
+        }
+
         randomPoints.push_back(glm::vec3{points[randomIndex], points[randomIndex+1], points[randomIndex+2]});
     }
 
