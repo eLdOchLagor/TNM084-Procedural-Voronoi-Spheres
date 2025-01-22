@@ -31,9 +31,9 @@
 
 std::vector<float> generateRandomPointsOnSphere(int n, float r);
 std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r);
-void GenerateAnchors(std::vector<float>& points, const std::vector<std::vector<glm::vec3>>& triangles, int n);
+void GenerateAnchors(std::vector<float>& points, int n);
 
-glm::vec3 ray_intersects_triangle(const glm::vec3& ray_origin, const glm::vec3& ray_vector, const std::vector<glm::vec3>& triangle);
+glm::vec3 RayIntersectsRoom(const glm::vec3& point_ray);
 
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO);
 std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vector<float>& vertices, const std::vector<glm::vec3>& circumcenters, const std::vector<unsigned int>& indices);
@@ -362,18 +362,6 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
 std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned int& VBO, unsigned int& EBO) {
     auto start = std::chrono::high_resolution_clock::now(); // TIMER START
 
-    // Define room for connecting Anchor points
-    std::vector<std::vector<glm::vec3>> roomTriangles{
-        {glm::vec3{-2.0f, -2.0f, -2.0f}, glm::vec3{2.0f, -2.0f, -2.0f}, glm::vec3{-2.0f, -2.0f, 2.0f}}, // Bottom tri 1
-        {glm::vec3{2.0f, -2.0f, -2.0f}, glm::vec3{2.0f, -2.0f, 2.0f}, glm::vec3{-2.0f, -2.0f, 2.0f}}, // Bottom tri 2
-        {glm::vec3{2.0f, 2.0f, -2.0f}, glm::vec3{-2.0f, 2.0f, -2.0f}, glm::vec3{-2.0f, 2.0f, 2.0f}}, // Top tri 1
-        {glm::vec3{2.0f, 2.0f, -2.0f}, glm::vec3{-2.0f, 2.0f, 2.0f}, glm::vec3{2.0f, 2.0f, 2.0f}}, // Top tri 2
-        {glm::vec3{-2.0f, -2.0f, -2.0f}, glm::vec3{-2.0f, -2.0f, 2.0f}, glm::vec3{-2.0f, 2.0f, -2.0f}}, // Left wall tri 1
-        {glm::vec3{-2.0f, -2.0f, 2.0f}, glm::vec3{-2.0f, 2.0f, 2.0f}, glm::vec3{-2.0f, 2.0f, -2.0f}}, // Left wall tri 2
-        {glm::vec3{2.0f, -2.0f, 2.0f}, glm::vec3{2.0f, -2.0f, -2.0f}, glm::vec3{2.0f, 2.0f, -2.0f}}, // Right wall tri 1
-        {glm::vec3{2.0f, -2.0f, 2.0f}, glm::vec3{2.0f, 2.0f, -2.0f}, glm::vec3{2.0f, 2.0f, 2.0f}}, // Right wall tri 2
-    };
-
     // Generate grid points
     std::vector<quickhull::Vector3<float>> points = generateGridPointsOnSphere(numberOfPoints, radius);
 
@@ -411,7 +399,7 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         voronoiEdgeVertices.push_back(edge.second.z);
     }
 
-    GenerateAnchors(voronoiEdgeVertices, roomTriangles, 10);
+    GenerateAnchors(voronoiEdgeVertices, 20);
 
     triangleStripVertices = linesToTriangles(voronoiEdgeVertices, width);
 
@@ -800,13 +788,13 @@ std::vector<float> linesToTriangles(const std::vector<float>& vertices, float wi
     return triangles;
 }
 
-void GenerateAnchors(std::vector<float>& points, const std::vector<std::vector<glm::vec3>>& triangles, int n) {
+void GenerateAnchors(std::vector<float>& points, int n) {
     std::vector<glm::vec3> randomPoints;
 
     // Select n random points
     for (int i = 0; i < n; i++)
     {
-        int randomIndex = Utility::generateRandomValue(0.0, 1.0) * ((points.size() - 1)/3);
+        int randomIndex = Utility::generateRandomValue(0.0, 1.0) * ((points.size()/3) - 1);
         randomPoints.push_back(glm::vec3{points[randomIndex], points[randomIndex+1], points[randomIndex+2]});
     }
 
@@ -815,66 +803,39 @@ void GenerateAnchors(std::vector<float>& points, const std::vector<std::vector<g
         glm::vec3 currentPoint = randomPoints[i];
         glm::vec3 newPoint = currentPoint * 2.0f;
 
-        glm::vec3 intersectionPoint;
-        for (size_t i = 0; i < triangles.size(); i++)
-        {
-            intersectionPoint = ray_intersects_triangle(glm::vec3(0.0), currentPoint, triangles[i]);
-        }
+        glm::vec3 intersectionPoint = RayIntersectsRoom(currentPoint);
+
         std::cout << intersectionPoint.x << " " << intersectionPoint.y << " " << intersectionPoint.z << "\n";
+
         points.push_back(currentPoint.x);
         points.push_back(currentPoint.y);
         points.push_back(currentPoint.z);
 
-        // If it intersected wall, ONLY TEMPORARY, IT WILL ALWAYS HIT WALL WHEN CLOSED ROOM
-        if (intersectionPoint != glm::vec3(0.0))
-        {
-            points.push_back(intersectionPoint.x);
-            points.push_back(intersectionPoint.y);
-            points.push_back(intersectionPoint.z);
-        }
-        else {
-            points.push_back(newPoint.x);
-            points.push_back(newPoint.y);
-            points.push_back(newPoint.z);
-        }
+        points.push_back(intersectionPoint.x);
+        points.push_back(intersectionPoint.y);
+        points.push_back(intersectionPoint.z);
         
     }
     
 }
 
-glm::vec3 ray_intersects_triangle(const glm::vec3& ray_origin, const glm::vec3& ray_vector, const std::vector<glm::vec3>& triangle)
-{
-    constexpr float epsilon = std::numeric_limits<float>::epsilon();
+glm::vec3 RayIntersectsRoom(const glm::vec3& point_ray) {
+    float t_min = std::numeric_limits<float>::infinity();
 
-    glm::vec3 edge1 = triangle[1] - triangle[0]; // 1 - 0
-    glm::vec3 edge2 = triangle[2] - triangle[0]; // 2 - 0
-    glm::vec3 ray_cross_e2 = glm::cross(ray_vector, edge2);
-    float det = glm::dot(edge1, ray_cross_e2);
+    float tx1 = (-2.0f - point_ray.x) / point_ray.x;
+    float tx2 = (2.0f - point_ray.x) / point_ray.x;
+    t_min = glm::min(t_min, glm::max(tx1, tx2));
 
-    if (det > -epsilon && det < epsilon)
-        return glm::vec3(0.0);    // This ray is parallel to this triangle.
+    float ty1 = (-2.0f - point_ray.y) / point_ray.y;
+    float ty2 = (2.0f - point_ray.y) / point_ray.y;
+    t_min = glm::min(t_min, glm::max(ty1, ty2));
 
-    float inv_det = 1.0 / det;
-    glm::vec3 s = ray_origin - triangle[0]; // 0
-    float u = inv_det * glm::dot(s, ray_cross_e2);
+    float tz1 = (-2.0f - point_ray.z) / point_ray.z;
+    float tz2 = (2.0f - point_ray.z) / point_ray.z;
+    t_min = glm::min(t_min, glm::max(tz1, tz2));
 
-    if ((u < 0 && abs(u) > epsilon) || (u > 1 && abs(u - 1) > epsilon))
-        return glm::vec3(0.0);
+    glm::vec3 intersection_point = point_ray + t_min * point_ray;
 
-    glm::vec3 s_cross_e1 = glm::cross(s, edge1);
-    float v = inv_det * glm::dot(ray_vector, s_cross_e1);
-
-    if ((v < 0 && abs(v) > epsilon) || (u + v > 1 && abs(u + v - 1) > epsilon))
-        return glm::vec3(0.0);
-
-    // At this stage we can compute t to find out where the intersection point is on the line.
-    float t = inv_det * glm::dot(edge2, s_cross_e1);
-
-    if (t > epsilon) // ray intersection
-    {
-        return  glm::vec3(ray_origin + ray_vector * t);
-    }
-    else // This means that there is a line intersection but not a ray intersection.
-        return {};
+    return intersection_point;
 }
 
