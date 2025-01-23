@@ -28,9 +28,7 @@
 
 #include "Utility.h"
 
-
-std::vector<float> generateRandomPointsOnSphere(int n, float r);
-std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r);
+std::vector<quickhull::Vector3<float>> generateRandomPointsOnSphere(int n, float r);
 void GenerateAnchors(std::vector<float>& points, int n);
 
 glm::vec3 RayIntersectsRoom(const glm::vec3& point_ray);
@@ -296,46 +294,20 @@ int main()
     return 0;
 }
 
-
-
-// Genererar random seed points på sfär, kan användas om voronoi beräknas på cpu
-std::vector<float> generateRandomPointsOnSphere(int n, float r) {
-    std::vector<float> randomPoints;
-    randomPoints.reserve(3*n);
-
-    for (size_t i = 0; i < n; i++)
-    {
-        float randomNumberAz = Utility::generateRandomValue();
-        float randomNumberInc = Utility::generateRandomValue();
-
-        float inclinationAngle = acos(2 * randomNumberInc - 1);
-        float azimuthAngle = 2 * M_PI * randomNumberAz;
-
-        float x = r * sin(inclinationAngle) * cos(azimuthAngle);
-        float y = r * sin(inclinationAngle) * sin(azimuthAngle);
-        float z = r * cos(inclinationAngle);
-
-        randomPoints.push_back(x);
-        randomPoints.push_back(y);
-        randomPoints.push_back(z);
-    }
-
-    return randomPoints;
-}
-
-std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r) {
+// https://extremelearning.com.au/how-to-evenly-distribute-points-on-a-sphere-more-effectively-than-the-canonical-fibonacci-lattice/
+std::vector<quickhull::Vector3<float>> generateRandomPointsOnSphere(int n, float r) {
     std::vector<quickhull::Vector3<float>> points;
 
     float goldenRatio = (1.0f + sqrt(5.0f)) / 2.0f; // Golden ratio
 
     for (int i = 0; i < n; i++) {
-        float z = 1.0f - (2.0f * i) / (n - 1); // z goes from 1 to -1
-        float radiusAtZ = sqrt(1.0f - z * z); // Radius at this z
+        float inclinationAngle = 2.0f * M_PI * i / goldenRatio;
+        float azimuthAngle = std::acos(1.0f - 2.0f * (i + 0.5f) / n);
 
-        float theta = 2.0f * M_PI * i / goldenRatio; // Golden angle increment
-
-        float x = r * radiusAtZ * cos(theta);
-        float y = r * radiusAtZ * sin(theta);
+        // Convert spherical to Cartesian coordinates
+        float x = std::cos(inclinationAngle) * std::sin(azimuthAngle);
+        float y = std::sin(inclinationAngle) * std::sin(azimuthAngle);
+        float z = std::cos(azimuthAngle);
 
         glm::vec3 pos{ x, y, z };
 
@@ -347,13 +319,13 @@ std::vector<quickhull::Vector3<float>> generateGridPointsOnSphere(int n, float r
         };
         randomOffset = glm::normalize(randomOffset);
 
-        double offsetMagnitude = Utility::generateRandomValue(0.0, randomness); // Adjust the range as needed
+        double offsetMagnitude = Utility::generateRandomValue(0.0, randomness); // Magnitude determined by how random
         randomOffset *= offsetMagnitude;
 
         pos += randomOffset;
         pos = glm::normalize(pos);
 
-        points.push_back(quickhull::Vector3<float>{pos.x, pos.y, pos.z});
+        points.push_back(quickhull::Vector3<float>{pos.x, pos.y, pos.z});   
     }
 
     return points;
@@ -363,7 +335,7 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
     auto start = std::chrono::high_resolution_clock::now(); // TIMER START
 
     // Generate grid points
-    std::vector<quickhull::Vector3<float>> points = generateGridPointsOnSphere(numberOfPoints, radius);
+    std::vector<quickhull::Vector3<float>> points = generateRandomPointsOnSphere(numberOfPoints, radius);
 
     quickhull::QuickHull<float> qh;
     auto hull = qh.getConvexHull(points, true, false);
