@@ -38,6 +38,29 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vect
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
 std::vector<float> linesToTriangles(const std::vector<float>& vertices, float width);
 
+#define drawRoomBoundaryAndAnchors 0
+// A flattened vector of floats representing the cube's lines
+std::vector<float> cubeLines = {
+    // Bottom face (-1.5 z)
+    -1.5f, -1.5f, -1.5f,  1.5f, -1.5f, -1.5f, // Line 1
+     1.5f, -1.5f, -1.5f,  1.5f,  1.5f, -1.5f, // Line 2
+     1.5f,  1.5f, -1.5f, -1.5f,  1.5f, -1.5f, // Line 3
+    -1.5f,  1.5f, -1.5f, -1.5f, -1.5f, -1.5f, // Line 4
+
+    // Top face (1.5 z)
+    -1.5f, -1.5f,  1.5f,  1.5f, -1.5f,  1.5f, // Line 5
+     1.5f, -1.5f,  1.5f,  1.5f,  1.5f,  1.5f, // Line 6
+     1.5f,  1.5f,  1.5f, -1.5f,  1.5f,  1.5f, // Line 7
+    -1.5f,  1.5f,  1.5f, -1.5f, -1.5f,  1.5f, // Line 8
+
+    // Vertical edges
+    -1.5f, -1.5f, -1.5f, -1.5f, -1.5f,  1.5f, // Line 9
+     1.5f, -1.5f, -1.5f,  1.5f, -1.5f,  1.5f, // Line 10
+     1.5f,  1.5f, -1.5f,  1.5f,  1.5f,  1.5f, // Line 11
+    -1.5f,  1.5f, -1.5f, -1.5f,  1.5f,  1.5f  // Line 12
+};
+
+
 float viewportWidth = 1500.0;
 float viewportHeight = 1500.0;
 
@@ -160,6 +183,21 @@ int main()
     glGenBuffers(1, &VBO);
     glGenBuffers(1, &EBO);
     std::vector<unsigned int> castedIndexBuffer = generateAndUploadBuffers(VAO, VBO, EBO);
+    
+    #if drawRoomBoundaryAndAnchors
+    unsigned int VAO_lines, VBO_lines;
+    glGenVertexArrays(1, &VAO_lines);
+    glGenBuffers(1, &VBO_lines);
+
+    glBindVertexArray(VAO_lines);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO_lines);
+    glBufferData(GL_ARRAY_BUFFER, cubeLines.size() * sizeof(float), cubeLines.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+    #endif
+
+    glBindVertexArray(0);
+
 
     glEnable(GL_DEPTH_TEST);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -213,7 +251,7 @@ int main()
         // Use the shader program
         glUseProgram(shaderProgram);
         
-        glLineWidth(2.0f);
+        glLineWidth(5.0f);
         glPointSize(5.0f);
 
         // Bind the VAO and draw
@@ -233,6 +271,11 @@ int main()
         {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             glDrawArrays(GL_TRIANGLES, 0, 1000000);
+
+            #if drawRoomBoundaryAndAnchors
+            glBindVertexArray(VAO_lines);
+            glDrawArrays(GL_LINES, 0, 1000);
+            #endif
         }
         
 
@@ -371,7 +414,9 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         voronoiEdgeVertices.push_back(edge.second.z);
     }
 
-    //GenerateAnchors(voronoiEdgeVertices, 20);
+#if drawRoomBoundaryAndAnchors
+    GenerateAnchors(voronoiEdgeVertices, 100);
+#endif
 
     triangleStripVertices = linesToTriangles(voronoiEdgeVertices, width);
 
@@ -763,9 +808,9 @@ void GenerateAnchors(std::vector<float>& points, int n) {
         {
             if (points[i] == points[randomIndex])
             {
-                points[randomIndex] *= 1.2;
-                points[randomIndex + 1] *= 1.2;
-                points[randomIndex + 2] *= 1.2;
+                //points[randomIndex] *= 1.2;
+                //points[randomIndex + 1] *= 1.2;
+                //points[randomIndex + 2] *= 1.2;
             }
         }
 
@@ -796,16 +841,16 @@ void GenerateAnchors(std::vector<float>& points, int n) {
 glm::vec3 RayIntersectsRoom(const glm::vec3& point_ray) {
     float t_min = std::numeric_limits<float>::infinity();
 
-    float tx1 = (-2.0f - point_ray.x) / point_ray.x;
-    float tx2 = (2.0f - point_ray.x) / point_ray.x;
+    float tx1 = (-1.5f - point_ray.x) / point_ray.x;
+    float tx2 = (1.5f - point_ray.x) / point_ray.x;
     t_min = glm::min(t_min, glm::max(tx1, tx2));
 
-    float ty1 = (-2.0f - point_ray.y) / point_ray.y;
-    float ty2 = (2.0f - point_ray.y) / point_ray.y;
+    float ty1 = (-1.5f - point_ray.y) / point_ray.y;
+    float ty2 = (1.5f - point_ray.y) / point_ray.y;
     t_min = glm::min(t_min, glm::max(ty1, ty2));
 
-    float tz1 = (-2.0f - point_ray.z) / point_ray.z;
-    float tz2 = (2.0f - point_ray.z) / point_ray.z;
+    float tz1 = (-1.5f - point_ray.z) / point_ray.z;
+    float tz2 = (1.5f - point_ray.z) / point_ray.z;
     t_min = glm::min(t_min, glm::max(tz1, tz2));
 
     glm::vec3 intersection_point = point_ray + t_min * point_ray;
