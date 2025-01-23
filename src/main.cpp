@@ -40,8 +40,8 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vect
 std::vector<glm::vec3> computeCircumcenters(const std::vector<float>& vertices, const std::vector<unsigned int>& indices);
 std::vector<float> linesToTriangles(const std::vector<float>& vertices, float width);
 
-float viewportWidth = 800.0;
-float viewportHeight = 500.0;
+float viewportWidth = 1500.0;
+float viewportHeight = 1500.0;
 
 float randomness = 0.5f;
 float width = 0.005f;
@@ -251,7 +251,7 @@ int main()
         if (ImGui::SliderInt("Number of seeds", &numberOfPoints, 5, 2000)) {
             regenerateMesh = true;
         }
-        if (ImGui::SliderFloat("Line width", &width, 0.001f, 0.03f)) {
+        if (ImGui::SliderFloat("Edge width", &width, 0.001f, 0.03f)) {
             regenerateMesh = true;
         }
 
@@ -399,7 +399,7 @@ std::vector<unsigned int> generateAndUploadBuffers(unsigned int& VAO, unsigned i
         voronoiEdgeVertices.push_back(edge.second.z);
     }
 
-    GenerateAnchors(voronoiEdgeVertices, 20);
+    //GenerateAnchors(voronoiEdgeVertices, 20);
 
     triangleStripVertices = linesToTriangles(voronoiEdgeVertices, width);
 
@@ -511,18 +511,8 @@ std::vector<std::pair<glm::vec3, glm::vec3>> computeVoronoiEdges(const std::vect
         glm::vec3 AB = B - A;
         glm::vec3 AC = C - A;
         glm::vec3 normal = glm::cross(AB, AC);
-        if (glm::length(normal) < 0.001) {
-            // Skip degenerate triangle
-            continue;
-        }
 
         glm::vec3 circumcenter = circumcenters[i / 3];
-
-        if (circumcenter == glm::vec3(0.0))
-        {
-            std::cout << "Do not create triangle \n";
-            continue;
-        }
 
         auto insertEdge = [&](int u, int v) {
             if (u > v) std::swap(u, v);
