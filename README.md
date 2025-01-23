@@ -1,5 +1,6 @@
 # Procedurally Generate Voronoi Spheres
-This is a project made in the course TNM084 at Linköping University. The project is a program that allows the user to generate different sphere meshes using spherical Voronoi noise.
+This is a project made in the course TNM084 at Linköping University. 
+The project is a program that allows the user to generate different sphere meshes using spherical Voronoi noise.
 It is accomplished by generating a bunch of random seed points on the surface of a sphere using Fibonacci lattice, calculating the convex hull of the points to get the Delaunay triangulation, and then extracting the Voronoi edges since it is the dual of the Delaunay. A very simple mesh is then generated for exporting.
 The convex hull is calculated using the Quickhull algorithm as implemented here: https://github.com/akuukka/quickhull
 
