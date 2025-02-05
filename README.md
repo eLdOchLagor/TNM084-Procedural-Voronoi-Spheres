@@ -7,3 +7,4 @@ The convex hull is calculated using the Quickhull algorithm as implemented here:
 ![final](https://github.com/user-attachments/assets/0aa877af-5774-4941-85b4-4c80701d3aaf)
 ![fibonacciRed](https://github.com/user-attachments/assets/38f7dff7-17b8-4dad-a95c-33051351cef4)
 ![user interface](https://github.com/user-attachments/assets/2e399b46-ced1-404d-bb76-467a532af99e)
+![blenderResult](https://github.com/user-attachments/assets/f18e0ec4-348c-4f56-8a91-8ccf93cfee45)
